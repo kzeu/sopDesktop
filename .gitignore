@@ -1,0 +1,8 @@
+node_modules/
+release/
+dist/
+*.log
+*.db-shm
+*.db-wal
+Thumbs.db
+.DS_Store

@@ -1,0 +1,391 @@
+/* ===========================
+   MODAL
+=========================== */
+
+#modalordens{
+
+    display:none;
+
+    position:fixed;
+
+    inset:0;
+
+    background:rgba(0,0,0,.35);
+
+    z-index:9999;
+
+    overflow:auto;
+
+}
+
+.modal-body{
+
+    width:94%;
+
+    max-width:1600px;
+
+    height:92vh;
+
+    margin:25px auto;
+
+    background:#fff;
+
+    border-radius:10px;
+
+    padding:18px;
+
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+
+    overflow:auto;
+
+}
+
+
+/* ===========================
+   CABEÇALHO
+=========================== */
+
+#tituloOrdens{
+
+    margin:0;
+
+    font-size:24px;
+
+    font-weight:700;
+
+}
+
+#cabecalhoProduto{
+
+    position:sticky;
+
+    top:0;
+
+    background:#f7f8fa;
+
+    border:1px solid #ddd;
+
+    border-radius:8px;
+
+    padding:12px 16px;
+
+    margin:15px 0 25px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    z-index:10;
+
+}
+
+#produtoModal{
+
+    font-size:22px;
+
+    font-weight:700;
+
+}
+
+#totalProduto{
+
+    color:#666;
+
+    margin-top:5px;
+
+    font-size:14px;
+
+}
+
+
+/* ===========================
+   BOTÕES
+=========================== */
+
+#cabecalhoProduto button{
+
+    background:#0d3b73;
+
+    color:white;
+
+    border:none;
+
+    border-radius:6px;
+
+    padding:10px 18px;
+
+    cursor:pointer;
+
+    font-size:13px;
+
+    font-weight:bold;
+
+}
+
+#cabecalhoProduto button:hover{
+
+    background:#1456a0;
+
+}
+
+button{
+
+    transition:.2s;
+
+}
+
+
+/* ===========================
+   CARD DA OC
+=========================== */
+
+.cardOC{
+
+    border:1px solid #d8d8d8;
+
+    border-radius:8px;
+
+    padding:14px;
+
+    margin-bottom:22px;
+
+    background:white;
+
+    box-shadow:0 2px 8px rgba(0,0,0,.05);
+
+}
+
+.cardOC:hover{
+
+    box-shadow:0 5px 18px rgba(0,0,0,.10);
+
+}
+
+
+/* ===========================
+   CABEÇALHO DA OC
+=========================== */
+
+.cabecalhoOC{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:10px;
+
+}
+
+.cabecalhoOC b{
+
+    font-size:18px;
+
+}
+
+.cabecalhoOC div:last-child{
+
+    color:#666;
+
+    font-size:13px;
+
+}
+
+
+/* ===========================
+   DATAS
+=========================== */
+
+.datasOC{
+
+    display:flex;
+
+    gap:25px;
+
+    flex-wrap:wrap;
+
+    align-items:center;
+
+    margin:10px 0 18px;
+
+}
+
+.datasOC label{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+    font-size:13px;
+
+}
+
+.datasOC input{
+
+    height:28px;
+
+    border:1px solid #ccc;
+
+    border-radius:4px;
+
+    padding:2px 6px;
+
+}
+
+
+/* ===========================
+   TABELA
+=========================== */
+
+.tabelaItens{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    font-size:13px;
+
+}
+
+.tabelaItens thead{
+
+    background:#eef2f7;
+
+}
+
+.tabelaItens th{
+
+    padding:7px;
+
+    border:1px solid #ddd;
+
+    text-align:left;
+
+}
+
+.tabelaItens td{
+
+    padding:6px;
+
+    border:1px solid #eee;
+
+}
+
+.tabelaItens tbody tr:nth-child(even){
+
+    background:#fafafa;
+
+}
+
+.tabelaItens tbody tr:hover{
+
+    background:#edf5ff;
+
+}
+
+
+/* ===========================
+   COLUNAS
+=========================== */
+
+.tabelaItens th:nth-child(1),
+.tabelaItens td:nth-child(1){
+
+    width:120px;
+
+}
+
+.tabelaItens th:nth-child(2),
+.tabelaItens td:nth-child(2){
+
+    width:55px;
+
+    text-align:center;
+
+}
+
+.tabelaItens th:last-child,
+.tabelaItens td:last-child{
+
+    width:110px;
+
+    text-align:right;
+
+    font-weight:bold;
+
+}
+
+
+/* ===========================
+   TOTAL
+=========================== */
+
+.totalOC{
+
+    text-align:right;
+
+    padding-top:10px;
+
+    font-size:14px;
+
+    font-weight:bold;
+
+    color:#0d3b73;
+
+}
+
+
+/* ===========================
+   FORNECEDOR
+=========================== */
+
+.fornecedor{
+
+    color:#444;
+
+    font-size:13px;
+
+    margin-bottom:8px;
+
+}
+
+
+/* ===========================
+   HR
+=========================== */
+
+hr{
+
+    display:none;
+
+}
+
+
+/* ===========================
+   SCROLL
+=========================== */
+
+.modal-body::-webkit-scrollbar{
+
+    width:9px;
+
+}
+
+.modal-body::-webkit-scrollbar-thumb{
+
+    background:#bbb;
+
+    border-radius:20px;
+
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover{
+
+    background:#888;
+
+}
