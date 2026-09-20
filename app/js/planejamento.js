@@ -1,203 +1,400 @@
 async function carregarForecasts(rowData){
 
+    const status =
+        document.getElementById(
+            'statusCarregamento'
+        );
+
+    /* =====================================================
+       MAPA DOS MESES
+    ===================================================== */
+
+    const mapaMes = {
+
+        janeiro:1,
+        fevereiro:2,
+        março:3,
+        abril:4,
+        maio:5,
+        junho:6,
+        julho:7,
+        agosto:8,
+        setembro:9,
+        outubro:10,
+        novembro:11,
+        dezembro:12
+
+    };
 
 
-const status =
-document.getElementById(
+    /* =====================================================
+       MAPA DE PRODUTOS
+       Evita rowData.find() milhares de vezes
+    ===================================================== */
 
-    'statusCarregamento'
+    const mapaProdutos = {};
 
-)
+    rowData.forEach(r => {
 
+        if(
+            r.tipo == 'subtotal' ||
+            r.tipo == 'total'
+        ){
 
-
-    for(const mesNome of meses){
-
-
-status.innerHTML =
-
-`Carregando ${mesNome}...`
-
-        /* EXEMPLO:
-           maio-26
-        */
-
-        const partes = mesNome.split('-')
-
-        const nomeMes = partes[0]
-
-        const ano = '20' + partes[1]
-
-        /* MAPA MESES */
-
-        const mapaMes = {
-
-            janeiro:1,
-            fevereiro:2,
-            março:3,
-            abril:4,
-            maio:5,
-            junho:6,
-            julho:7,
-            agosto:8,
-            setembro:9,
-            outubro:10,
-            novembro:11,
-            dezembro:12
+            return;
 
         }
 
-        const numeroMes =
-        mapaMes[nomeMes]
+        const chave =
+            String(
+                r.codigo
+            ).trim()
 
-        /* ========================================
-           BUSCAR BUDGET
-        ======================================== */
+            + '_'
 
-        const budgetResp =
-        await fetch(
-
-            `https://api.volkdobrasil.com.br/api/budget/year/${ano}`
-
-        )
-
-        const budgetJson =
-        await budgetResp.json()
-
-       
-            if(!budgetJson.budget){
-
-              
-
-                continue
-
-            }
-
-            const budgetId =
-            budgetJson.budget.id
-
-        /* ========================================
-           BUSCAR FORECASTS
-        ======================================== */
-
-        const forecastsResp =
-        await fetch(
-
-            `https://api.volkdobrasil.com.br/api/forecast/budget/${budgetId}`
-
-        )
-
-        const forecastsJson =
-        await forecastsResp.json()
-
-           
-
-        /* ACHAR MÊS */
-
-        const forecastMes =
-        forecastsJson.forecasts.find(
-
-            f => Number(f.month) === numeroMes
-
-        )
-
-        /* NÃO ENCONTROU FORECAST */
-
-        if(!forecastMes){
-
-            
-
-            continue
-
-        }
-        /* ========================================
-           PRODUTOS FORECAST
-        ======================================== */
-
-        const produtosResp =
-            await fetch(
-
-            `https://api.volkdobrasil.com.br/api/forecast/products/${forecastMes.id}`
-
+            + String(
+                r.tam
             )
+            .trim()
+            .toUpperCase();
 
-        const produtosJson =
-        await produtosResp.json()
 
-                if(!produtosJson.forecast_products){
+        mapaProdutos[chave] = r;
 
-            
+    });
 
-                continue
+
+    /* =====================================================
+       PREPARAR ANOS NECESSÁRIOS
+    ===================================================== */
+
+    const dadosMeses =
+        meses.map(mesNome => {
+
+            const partes =
+                mesNome.split('-');
+
+            const nomeMes =
+                partes[0];
+
+            const ano =
+                '20' + partes[1];
+
+            const numeroMes =
+                mapaMes[nomeMes];
+
+            return {
+
+                mesNome,
+                nomeMes,
+                ano,
+                numeroMes
+
+            };
+
+        });
+
+
+    /* =====================================================
+       DESCOBRIR ANOS ÚNICOS
+    ===================================================== */
+
+    const anosUnicos =
+        [
+            ...new Set(
+                dadosMeses.map(
+                    item => item.ano
+                )
+            )
+        ];
+
+
+    /* =====================================================
+       BUSCAR BUDGET + FORECASTS
+       UMA VEZ POR ANO
+    ===================================================== */
+
+    const mapaForecastsPorAno = {};
+
+
+    await Promise.all(
+
+        anosUnicos.map(
+            async ano => {
+
+                try{
+
+                    status.innerHTML =
+                        `Carregando Forecast ${ano}...`;
+
+
+                    /* =====================================
+                       BUDGET
+                    ===================================== */
+
+                    const budgetResp =
+                        await fetch(
+                            `https://api.volkdobrasil.com.br/api/budget/year/${ano}`
+                        );
+
+
+                    if(!budgetResp.ok){
+
+                        console.warn(
+                            'Budget não carregado:',
+                            ano,
+                            budgetResp.status
+                        );
+
+                        mapaForecastsPorAno[ano] = [];
+
+                        return;
+
+                    }
+
+
+                    const budgetJson =
+                        await budgetResp.json();
+
+
+                    if(!budgetJson.budget){
+
+                        mapaForecastsPorAno[ano] = [];
+
+                        return;
+
+                    }
+
+
+                    const budgetId =
+                        budgetJson.budget.id;
+
+
+                    /* =====================================
+                       FORECASTS DO BUDGET
+                    ===================================== */
+
+                    const forecastsResp =
+                        await fetch(
+                            `https://api.volkdobrasil.com.br/api/forecast/budget/${budgetId}`
+                        );
+
+
+                    if(!forecastsResp.ok){
+
+                        console.warn(
+                            'Forecasts não carregados:',
+                            ano,
+                            forecastsResp.status
+                        );
+
+                        mapaForecastsPorAno[ano] = [];
+
+                        return;
+
+                    }
+
+
+                    const forecastsJson =
+                        await forecastsResp.json();
+
+
+                    mapaForecastsPorAno[ano] =
+                        Array.isArray(
+                            forecastsJson.forecasts
+                        )
+                            ? forecastsJson.forecasts
+                            : [];
+
+
+                }
+                catch(erro){
+
+                    console.error(
+                        `Erro ao carregar Forecast do ano ${ano}:`,
+                        erro
+                    );
+
+                    mapaForecastsPorAno[ano] = [];
+
+                }
+
+            }
+        )
+
+    );
+
+
+    /* =====================================================
+       LOCALIZAR FORECAST DE CADA MÊS
+    ===================================================== */
+
+    const mesesParaBuscar = [];
+
+
+    dadosMeses.forEach(
+        item => {
+
+            const forecasts =
+                mapaForecastsPorAno[
+                    item.ano
+                ] || [];
+
+
+            const forecastMes =
+                forecasts.find(
+                    f =>
+                        Number(f.month)
+                        ===
+                        item.numeroMes
+                );
+
+
+            if(!forecastMes){
+
+                return;
 
             }
 
 
+            mesesParaBuscar.push({
+
+                ...item,
+
+                forecastId:
+                    forecastMes.id
+
+            });
+
+        }
+    );
 
 
-        /* ========================================
-           PREENCHER GRID
-        ======================================== */
+    /* =====================================================
+       BUSCAR PRODUTOS DOS MESES EM PARALELO
+    ===================================================== */
 
-        produtosJson.forecast_products.forEach(fp => {
+    await Promise.all(
 
-           
+        mesesParaBuscar.map(
+            async item => {
 
-                     const linhaGrid =
-                        rowData.find(r =>
+                try{
 
-                        String(r.codigo).trim()
-                        ==
-                        String(fp['Código']).trim()
+                    status.innerHTML =
+                        `Carregando ${item.mesNome}...`;
 
-                        &&
 
-                        String(r.tam).trim().toUpperCase()
-                        ==
-                        String(fp['Derivação']).trim().toUpperCase()
+                    const produtosResp =
+                        await fetch(
+                            `https://api.volkdobrasil.com.br/api/forecast/products/${item.forecastId}`
+                        );
 
-                    )
 
-                   
+                    if(!produtosResp.ok){
 
-            if(linhaGrid){
+                        console.warn(
+                            `Forecast de produtos não carregado: ${item.mesNome}`,
+                            produtosResp.status
+                        );
 
-               
+                        return;
 
-               linhaGrid[
-                    `${mesNome}_forecast`
-                ] = parseFloat(
+                    }
 
-    String(fp.Qtde)
-    .replace(/\./g,'')
-    .replace(',','.')
 
-) || 0
+                    const produtosJson =
+                        await produtosResp.json();
 
-                
 
-              
+                    if(
+                        !produtosJson.forecast_products
+                    ){
+
+                        return;
+
+                    }
+
+
+                    /* =====================================
+                       PREENCHER GRID
+                    ===================================== */
+
+                    produtosJson
+                        .forecast_products
+                        .forEach(fp => {
+
+                            const chave =
+
+                                String(
+                                    fp['Código']
+                                )
+                                .trim()
+
+                                + '_'
+
+                                + String(
+                                    fp['Derivação']
+                                )
+                                .trim()
+                                .toUpperCase();
+
+
+                            const linhaGrid =
+                                mapaProdutos[chave];
+
+
+                            if(!linhaGrid){
+
+                                return;
+
+                            }
+
+
+                            const forecast =
+                                parseFloat(
+
+                                    String(
+                                        fp.Qtde || 0
+                                    )
+                                    .replace(
+                                        /\./g,
+                                        ''
+                                    )
+                                    .replace(
+                                        ',',
+                                        '.'
+                                    )
+
+                                ) || 0;
+
+
+                            linhaGrid[
+                                `${item.mesNome}_forecast`
+                            ] = forecast;
+
+                        });
+
+
+                }
+                catch(erro){
+
+                    console.error(
+                        `Erro ao carregar Forecast ${item.mesNome}:`,
+                        erro
+                    );
+
+                }
 
             }
+        )
 
-        })
+    );
 
-
-
-    }
-
-
-
-    /* FINAL DA FUNÇÃO */
 
     status.innerHTML =
+        'Forecast carregado';
 
-    'Forecasts carregados'
-     
-
-
-
-  
 }
 
 
@@ -313,14 +510,18 @@ function calcularMedia3Meses(rowData){
 
 async function carregarForecastsPassados(rowData){
 
-    
-
     const status =
         document.getElementById(
             'statusCarregamento'
-        )
+        );
+
+
+    /* =====================================================
+       MAPA DOS MESES
+    ===================================================== */
 
     const mapaMes = {
+
         janeiro:1,
         fevereiro:2,
         março:3,
@@ -333,7 +534,8 @@ async function carregarForecastsPassados(rowData){
         outubro:10,
         novembro:11,
         dezembro:12
-    }
+
+    };
 
 
     /* =====================================================
@@ -341,249 +543,384 @@ async function carregarForecastsPassados(rowData){
        Evita rowData.find() milhares de vezes
     ===================================================== */
 
-    const mapaProdutos = {}
+    const mapaProdutos = {};
+
 
     rowData.forEach(r => {
 
         if(
-            r.tipo == 'subtotal'
-            ||
+            r.tipo == 'subtotal' ||
             r.tipo == 'total'
         ){
-            return
+
+            return;
+
         }
 
-        const chave =
 
-            String(r.codigo).trim()
+        const chave =
+            String(
+                r.codigo
+            ).trim()
 
             + '_'
 
-            + String(r.tam)
-                .trim()
-                .toUpperCase()
+            + String(
+                r.tam
+            )
+            .trim()
+            .toUpperCase();
 
-        mapaProdutos[chave] = r
 
-    })
+        mapaProdutos[chave] = r;
+
+    });
 
 
     /* =====================================================
-       LOOP DOS 12 MESES PASSADOS
+       PREPARAR OS 12 MESES
     ===================================================== */
 
-    for(const mesNome of mesesPassados){
+    const dadosMeses =
+        mesesPassados.map(mesNome => {
 
-        status.innerHTML =
-            `Carregando histórico ${mesNome}...`
+            const partes =
+                mesNome.split('-');
 
-        const partes =
-            mesNome.split('-')
+            const nomeMes =
+                partes[0];
 
-        const nomeMes =
-            partes[0]
+            const ano =
+                '20' + partes[1];
 
-        const ano =
-            '20' + partes[1]
+            const numeroMes =
+                mapaMes[nomeMes];
 
-        const numeroMes =
-            mapaMes[nomeMes]
+            return {
+
+                mesNome,
+                nomeMes,
+                ano,
+                numeroMes
+
+            };
+
+        });
 
 
-        try{
+    /* =====================================================
+       ANOS ÚNICOS
+       Evita buscar o mesmo budget várias vezes
+    ===================================================== */
 
-            /* =============================================
-               BUDGET DO ANO
-            ============================================= */
-
-            const budgetResp =
-                await fetch(
-
-                    `https://api.volkdobrasil.com.br/api/budget/year/${ano}`
-
+    const anosUnicos =
+        [
+            ...new Set(
+                dadosMeses.map(
+                    item => item.ano
                 )
+            )
+        ];
 
 
-            if(!budgetResp.ok){
+    /* =====================================================
+       BUSCAR BUDGET + FORECASTS
+       UMA VEZ POR ANO
+    ===================================================== */
 
-                console.warn(
-                    'Budget não carregado:',
-                    ano,
-                    budgetResp.status
-                )
-
-                continue
-            }
+    const mapaForecastsPorAno = {};
 
 
-            const budgetJson =
-                await budgetResp.json()
+    await Promise.all(
+
+        anosUnicos.map(
+            async ano => {
+
+                try{
+
+                    status.innerHTML =
+                        `Carregando histórico ${ano}...`;
 
 
-            if(!budgetJson.budget){
-                continue
-            }
+                    /* =====================================
+                       BUDGET
+                    ===================================== */
+
+                    const budgetResp =
+                        await fetch(
+                            `https://api.volkdobrasil.com.br/api/budget/year/${ano}`
+                        );
 
 
-            const budgetId =
-                budgetJson.budget.id
+                    if(!budgetResp.ok){
 
+                        console.warn(
+                            'Budget não carregado:',
+                            ano,
+                            budgetResp.status
+                        );
 
-            /* =============================================
-               FORECASTS DO BUDGET
-            ============================================= */
+                        mapaForecastsPorAno[ano] = [];
 
-            const forecastsResp =
-                await fetch(
+                        return;
 
-                    `https://api.volkdobrasil.com.br/api/forecast/budget/${budgetId}`
-
-                )
-
-
-            if(!forecastsResp.ok){
-                continue
-            }
-
-
-            const forecastsJson =
-                await forecastsResp.json()
-
-
-            const forecastMes =
-                forecastsJson.forecasts?.find(
-
-                    f =>
-                        Number(f.month)
-                        ===
-                        numeroMes
-
-                )
-
-
-            if(!forecastMes){
-                continue
-            }
-
-
-            /* =============================================
-               PRODUTOS DO FORECAST
-            ============================================= */
-
-            const produtosResp =
-                await fetch(
-
-                    `https://api.volkdobrasil.com.br/api/forecast/products/${forecastMes.id}`
-
-                )
-
-
-            if(!produtosResp.ok){
-                continue
-            }
-
-
-            const produtosJson =
-                await produtosResp.json()
-
-
-            if(
-                !produtosJson.forecast_products
-            ){
-                continue
-            }
-
-
-            /* =============================================
-               PREENCHER GRID
-            ============================================= */
-
-            produtosJson
-                .forecast_products
-                .forEach(fp => {
-
-                    const chave =
-
-                        String(
-                            fp['Código']
-                        ).trim()
-
-                        + '_'
-
-                        + String(
-                            fp['Derivação']
-                        )
-                        .trim()
-                        .toUpperCase()
-
-
-                    const linhaGrid =
-                        mapaProdutos[chave]
-
-
-                    if(!linhaGrid){
-                        return
                     }
 
 
-                    const forecast =
-
-                        parseFloat(
-
-                            String(fp.Qtde || 0)
-                            .replace(/\./g,'')
-                            .replace(',','.')
-
-                        ) || 0
+                    const budgetJson =
+                        await budgetResp.json();
 
 
-                    linhaGrid[
-                        `${mesNome}_forecast`
-                    ] = forecast
+                    if(!budgetJson.budget){
+
+                        mapaForecastsPorAno[ano] = [];
+
+                        return;
+
+                    }
 
 
-                    /* =====================================
-                       VENDAS
-                       POR ENQUANTO ZERO
-                    ===================================== */
-
-                    linhaGrid[
-                        `${mesNome}_vendas`
-                    ] = 0
+                    const budgetId =
+                        budgetJson.budget.id;
 
 
                     /* =====================================
-                       DESVIO
-                       VENDAS - FORECAST
+                       FORECASTS DO BUDGET
                     ===================================== */
 
-                    linhaGrid[
-                        `${mesNome}_desvio`
-                    ] =
+                    const forecastsResp =
+                        await fetch(
+                            `https://api.volkdobrasil.com.br/api/forecast/budget/${budgetId}`
+                        );
 
-                        0 - forecast
 
-                })
+                    if(!forecastsResp.ok){
+
+                        console.warn(
+                            'Forecasts não carregados:',
+                            ano,
+                            forecastsResp.status
+                        );
+
+                        mapaForecastsPorAno[ano] = [];
+
+                        return;
+
+                    }
+
+
+                    const forecastsJson =
+                        await forecastsResp.json();
+
+
+                    mapaForecastsPorAno[ano] =
+                        Array.isArray(
+                            forecastsJson.forecasts
+                        )
+                            ? forecastsJson.forecasts
+                            : [];
+
+                }
+                catch(erro){
+
+                    console.error(
+                        `Erro histórico ano ${ano}:`,
+                        erro
+                    );
+
+                    mapaForecastsPorAno[ano] = [];
+
+                }
+
+            }
+        )
+
+    );
+
+
+    /* =====================================================
+       LOCALIZAR O FORECAST DE CADA MÊS
+    ===================================================== */
+
+    const mesesParaBuscar = [];
+
+
+    dadosMeses.forEach(
+        item => {
+
+            const forecasts =
+                mapaForecastsPorAno[
+                    item.ano
+                ] || [];
+
+
+            const forecastMes =
+                forecasts.find(
+                    f =>
+                        Number(f.month)
+                        ===
+                        item.numeroMes
+                );
+
+
+            if(!forecastMes){
+
+                return;
+
+            }
+
+
+            mesesParaBuscar.push({
+
+                ...item,
+
+                forecastId:
+                    forecastMes.id
+
+            });
 
         }
-        catch(erro){
+    );
 
-            console.error(
-                'Erro histórico:',
-                mesNome,
-                erro
-            )
 
-        }
+    /* =====================================================
+       BUSCAR PRODUTOS DOS 12 MESES EM PARALELO
+    ===================================================== */
 
-    }
+    await Promise.all(
+
+        mesesParaBuscar.map(
+            async item => {
+
+                try{
+
+                    status.innerHTML =
+                        `Carregando histórico ${item.mesNome}...`;
+
+
+                    const produtosResp =
+                        await fetch(
+                            `https://api.volkdobrasil.com.br/api/forecast/products/${item.forecastId}`
+                        );
+
+
+                    if(!produtosResp.ok){
+
+                        console.warn(
+                            `Forecast histórico não carregado: ${item.mesNome}`,
+                            produtosResp.status
+                        );
+
+                        return;
+
+                    }
+
+
+                    const produtosJson =
+                        await produtosResp.json();
+
+
+                    if(
+                        !produtosJson.forecast_products
+                    ){
+
+                        return;
+
+                    }
+
+
+                    /* =====================================
+                       PREENCHER GRID
+                    ===================================== */
+
+                    produtosJson
+                        .forecast_products
+                        .forEach(fp => {
+
+                            const chave =
+
+                                String(
+                                    fp['Código']
+                                )
+                                .trim()
+
+                                + '_'
+
+                                + String(
+                                    fp['Derivação']
+                                )
+                                .trim()
+                                .toUpperCase();
+
+
+                            const linhaGrid =
+                                mapaProdutos[chave];
+
+
+                            if(!linhaGrid){
+
+                                return;
+
+                            }
+
+
+                            const forecast =
+                                parseFloat(
+                                    String(
+                                        fp.Qtde || 0
+                                    )
+                                    .replace(
+                                        /\./g,
+                                        ''
+                                    )
+                                    .replace(
+                                        ',',
+                                        '.'
+                                    )
+                                ) || 0;
+
+
+                            /* FORECAST */
+
+                            linhaGrid[
+                                `${item.mesNome}_forecast`
+                            ] = forecast;
+
+
+                            /* VENDAS */
+
+                            linhaGrid[
+                                `${item.mesNome}_vendas`
+                            ] = 0;
+
+
+                            /* DESVIO */
+
+                            linhaGrid[
+                                `${item.mesNome}_desvio`
+                            ] = -forecast;
+
+                        });
+
+                }
+                catch(erro){
+
+                    console.error(
+                        'Erro histórico:',
+                        item.mesNome,
+                        erro
+                    );
+
+                }
+
+            }
+        )
+
+    );
 
 
     status.innerHTML =
-        'Histórico carregado'
-
-
-   
+        'Histórico carregado';
 
 }
 
@@ -806,15 +1143,30 @@ await window.api.buscarFaturado();
            MÊS
         ============================== */
 
-        const partesMes =
-            venda["[AnoMes]"]
-            .split("-");
 
-        const ano =
-            partesMes[0];
+        const anoMes =
+                String(
+                    venda["F_NFS[AnoMes]"] || ""
+                ).trim();
 
-        const numeroMes =
-            Number(partesMes[1]);
+            if(
+                !/^\d{6}$/.test(anoMes)
+            ){
+                console.warn(
+                    "Faturado ignorado. AnoMes inválido:",
+                    venda
+                );
+
+                return;
+            }
+
+            const ano =
+                anoMes.substring(0,4);
+
+            const numeroMes =
+                Number(
+                    anoMes.substring(4,6)
+                );
 
         const mesGrid =
 
@@ -1200,7 +1552,7 @@ linhaGrid.custo_medio =
 
 
 
-async function carregarEntradas(rowData){
+async function carregarEntradas(rowData, comprasSalvas){
 
     /* =====================================================
        MAPA PRODUTOS
@@ -1216,55 +1568,49 @@ async function carregarEntradas(rowData){
 
     })
 
+
     /* =====================================================
-   LIMPAR ENTRADAS ANTIGAS
-===================================================== */
+       LIMPAR ENTRADAS ANTIGAS
+    ===================================================== */
 
-rowData.forEach(item=>{
+    rowData.forEach(item=>{
 
-    item.Est_Entrada = 0;
+        item.Est_Entrada = 0;
+        item.fob_total = 0;
+        item.cf_qtd_disp = 0;
+        item.cf_custo_total = 0;
 
-    item.fob_total = 0;
+        meses.forEach(m=>{
 
-    item.cf_qtd_disp = 0;
+            item[`${m}_entrada`] = 0;
+            item[`${m}_cf_fob_total`] = 0;
 
-    item.cf_custo_total = 0;
-
-    meses.forEach(m=>{
-
-        item[`${m}_entrada`] = 0;
-
-        item[`${m}_cf_fob_total`] = 0;
+        });
 
     });
 
-});
 
     /* =====================================================
-       BUSCAR PROCESSOS
+       ORDENS RECEBIDAS
     ===================================================== */
 
-     
+    if(!comprasSalvas){
 
+        console.warn(
+            "carregarEntradas: nenhuma ordem foi informada."
+        );
 
-    const comprasJson = {
-
-    processItems: await window.api.buscarOrdens()
-
-
-};
-   
-
-    /* =====================================================
-       PEGAR ÚLTIMA COMPRA
-    ===================================================== */
-
-
-    if(!comprasJson.processItems){
-
-        return
+        return;
 
     }
+
+
+    /* =====================================================
+       CACHE LOCAL
+    ===================================================== */
+
+    ordensCache = structuredClone(comprasSalvas);
+
 
     /* =====================================================
        MAPA MESES
@@ -1287,47 +1633,33 @@ rowData.forEach(item=>{
 
     }
 
+
     /* =====================================================
        LOOP ITENS
     ===================================================== */
-   const comprasSalvas =
-    comprasJson.processItems;
 
-    ordensCache = structuredClone(comprasSalvas);
+    comprasSalvas.forEach(item => {
 
-// Caso o Electron não suporte structuredClone,
-// use esta linha no lugar:
-//
-// ordensCache = JSON.parse(
-//     JSON.stringify(comprasSalvas)
-// );
+        /* IGNORAR FINALIZADO */
 
-
-
-
-
-comprasSalvas.forEach(item => {
-                    /* IGNORAR FINALIZADO */
-
-        if (
-
-                String(item.status)
+        if(
+            String(item.status)
                 .trim()
                 .toUpperCase()
+            == "FINALIZADO"
+        ){
 
-                == "FINALIZADO"
+            return;
 
-            ){
+        }
 
-                return;
 
-            }
+        if(!item.etaVolk){
 
-            if(!item.etaVolk){
+            return;
 
-                return;
+        }
 
-            }
 
         /* =================================================
            DATA ETA
@@ -1339,28 +1671,28 @@ comprasSalvas.forEach(item => {
 
         const ano = data.getFullYear().toString();
 
-    
 
         /* =================================================
            FORMATO GRID
         ================================================= */
 
         const mesGrid =
+            `${nomesMes[mes]}-${ano.slice(-2)}`
 
-        `${nomesMes[mes]}-${ano.slice(-2)}`
 
         /* =================================================
            LOCALIZAR PRODUTO
         ================================================= */
-        const codigoPrincipal =
 
+        const codigoPrincipal =
             obterCodigoPrincipal(item.codPro);
 
-        const linhaGrid =
 
+        const linhaGrid =
             mapaProdutos[
                 codigoPrincipal + "_" + item.codDer
             ];
+
 
         if(!linhaGrid){
 
@@ -1368,19 +1700,20 @@ comprasSalvas.forEach(item => {
 
         }
 
+
         /* =================================================
            QUANTIDADE
         ================================================= */
 
         const quantidade =
+            parseFloat(item.qtdIte) || 0
 
-        parseFloat(item.qtdIte) || 0
 
         /* FOB TOTAL */
 
-        const fobTotal = 
+        const fobTotal =
+            Number(item.valorTotal) || 0;
 
-             Number(item.valorTotal) || 0;
 
         /* =================================================
            MÊS ATUAL
@@ -1390,20 +1723,21 @@ comprasSalvas.forEach(item => {
 
             linhaGrid.Est_Entrada =
 
-            (linhaGrid.Est_Entrada || 0)
+                (linhaGrid.Est_Entrada || 0)
 
-            +
+                +
 
-            quantidade
+                quantidade;
 
 
-              linhaGrid.fob_total =
+            linhaGrid.fob_total =
 
-            (linhaGrid.fob_total || 0)
+                (linhaGrid.fob_total || 0)
 
-            +
+                +
 
-            fobTotal
+                fobTotal;
+
 
             linhaGrid.fob_unit =
 
@@ -1431,58 +1765,49 @@ comprasSalvas.forEach(item => {
 
         }
 
+
         /* =================================================
            FUTUROS
         ================================================= */
-else{
 
-    /* =====================================
-       ENTRADA FUTURA
-    ===================================== */
+        else{
 
-    linhaGrid[
-        `${mesGrid}_entrada`
-    ] =
+            linhaGrid[
+                `${mesGrid}_entrada`
+            ] =
 
-    (
+                (
 
-        linhaGrid[
-            `${mesGrid}_entrada`
-        ] || 0
+                    linhaGrid[
+                        `${mesGrid}_entrada`
+                    ] || 0
 
-    )
+                )
 
-    +
+                +
 
-    quantidade
+                quantidade;
 
-    /* =====================================
-       CF FOB TOTAL
-    ===================================== */
 
-    linhaGrid[
-        `${mesGrid}_cf_fob_total`
-    ] =
+            linhaGrid[
+                `${mesGrid}_cf_fob_total`
+            ] =
 
-    (
+                (
 
-        linhaGrid[
-            `${mesGrid}_cf_fob_total`
-        ] || 0
+                    linhaGrid[
+                        `${mesGrid}_cf_fob_total`
+                    ] || 0
 
-    )
+                )
 
-    +
+                +
 
-    fobTotal
+                fobTotal;
 
-}
+        }
 
-        /* FOB TOTAL */
-
-      
-
-            })
+    });
 
 }
 
@@ -1588,15 +1913,23 @@ if (cenarioSelecionado) {
 
 } else {
 
-    ordens = await window.api.buscarOrdensCodigoDerivacao(
+    ordens = ordensCache.filter(o =>
 
-        codigos,
+        codigos.includes(String(o.codPro))
 
-        derivacao
+        &&
+
+        String(o.codDer).trim().toUpperCase()
+
+        ===
+
+        String(derivacao).trim().toUpperCase()
 
     );
 
 }
+
+
 
 
 
@@ -1661,23 +1994,19 @@ ordens.forEach(o => {
             return;
         }
 
+        const data = new Date(item.etaVolk);
 
-        const data =
-            new Date(item.etaVolk);
+        if(data < new Date('2025-01-01')){
+            return;
+        }
 
-
-        const numeroMes =
-            data.getMonth() + 1;
-
-
-        const ano =
-            data.getFullYear()
-                .toString();
+        const mes = data.getMonth() + 1;
+        const ano = data.getFullYear().toString();
 
 
         const mesGrid =
 
-            `${nomesMes[numeroMes]}-${ano.slice(-2)}`;
+            `${nomesMes[mes]}-${ano.slice(-2)}`;
 
 
         const quantidade =
@@ -2842,6 +3171,10 @@ item[
    CF QTD FINAL
 ===================================== */
 
+/* =====================================
+   CF QTD FINAL
+===================================== */
+
 if(i == 1){
 
     item[
@@ -2860,7 +3193,11 @@ if(i == 1){
 
         -
 
-        forecast
+        (
+            item[
+                `${mes}_cf_qtd_disp`
+            ] || 0
+        )
 
 }
 
@@ -2873,11 +3210,9 @@ else{
     ] =
 
         (
-
             item[
                 `${mesAnterior}_cf_qtd_final`
             ] || 0
-
         )
 
         +
@@ -2890,7 +3225,11 @@ else{
 
         -
 
-        forecast
+        (
+            item[
+                `${mes}_cf_qtd_disp`
+            ] || 0
+        )
 
 }
 
@@ -3485,7 +3824,7 @@ function atualizarGrid(rowData){
 
     const rowDataFinal = gerarSubtotais(dados);
 
-    gridApi.stopEditing();
+   gridApi.stopEditing();
 
     gridApi.setGridOption(
         "rowData",
@@ -3496,20 +3835,23 @@ function atualizarGrid(rowData){
         force:true
     });
 
+   
+
 }
+
+
 async function atualizarEntradas(){
 
-    
-    await carregarEntradas(rowData);
-    
+    await carregarEntradas(
+        rowData,
+        ordensCache
+    );
+
     calcularAtual(rowData);
-   
 
     calcularFuturo(rowData);
 
-
     atualizarGrid(rowData);
-  
 
 }
 
@@ -3523,9 +3865,25 @@ async function salvarCenarioAtual(){
         abrirModalCenarios();
 
         return;
-
     }
 
     await salvarCenario();
+
+   
+
+    setTimeout(() => {
+
+        const grid =
+            document.getElementById("myGrid");
+
+        if(grid){
+
+            grid.focus({
+                preventScroll:true
+            });
+
+        }
+
+    }, 100);
 
 }

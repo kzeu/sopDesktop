@@ -1,13 +1,22 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const {
+    app,
+    BrowserWindow,
+    ipcMain,
+    dialog
+} = require("electron");
 const fs = require("fs");
 const path = require("path");
 const cenario = require("./app/js/cenario");
 const cache = require("./app/js/cache");
+const XLSX = require("xlsx");
+
+const { execFile } = require("child_process");
 
 
 /*==================================================
-  PASTA BASE
+  PASTAS DO SISTEMA
 ==================================================*/
+
 const pastaBase = app.isPackaged
     ? path.dirname(process.execPath)
     : __dirname;
@@ -37,9 +46,12 @@ ipcMain.handle("buscarOrdens", () => {
 
         FROM ordens_compra
 
-        WHERE status<>'FINALIZADO'
+          WHERE etaVolk >= '2025-01-01'
 
         ORDER BY etaVolk
+
+        
+
 
     `).all();
 
@@ -74,65 +86,81 @@ ipcMain.handle(
 ==================================================*/
 
 
+/*==================================================
+  BUSCAR ORDENS DO PRODUTO
+==================================================*/
+
 ipcMain.handle(
     "buscarOrdensProduto",
     (event, codigos, mes) => {
 
+        console.log(
+            "buscarOrdensProduto:",
+            codigos,
+            mes
+        );
+
+        /* GARANTIR QUE SEJA ARRAY */
+
+        if(!Array.isArray(codigos)){
+            codigos = [codigos];
+        }
+
+        /* REMOVER VAZIOS */
+
+        codigos = codigos
+            .map(c => String(c).trim())
+            .filter(Boolean);
+
+        if(codigos.length === 0){
+            return [];
+        }
+
         const placeholders =
             codigos.map(() => "?").join(",");
 
-        const ordens = db.prepare(`
+        /* =========================================
+           BUSCAR OCs
+        ========================================= */
 
-            SELECT DISTINCT
-                numOcp
+        const ordens =
+            db.prepare(`
+                SELECT DISTINCT
+                    numOcp
+                FROM ordens_compra
+                WHERE
+                    status <> 'FINALIZADO'
+                    AND codPro IN (${placeholders})
+                    AND substr(etaVolk,1,7) = ?
+                    AND etaVolk >= '2025-01-01'
+                ORDER BY
+                    etaVolk,
+                    numOcp
+            `).all(
+                ...codigos,
+                mes
+            );
 
-            FROM ordens_compra
+        /* =========================================
+           BUSCAR ITENS DAS OCs
+        ========================================= */
 
-            WHERE
+        const stmtItens =
+            db.prepare(`
+                SELECT *
+                FROM ordens_compra
+                WHERE
+                    numOcp = ?
+                    AND status <> 'FINALIZADO'
+                    AND etaVolk >= '2025-01-01'
+                ORDER BY
+                    codPro,
+                    codDer
+            `);
 
-            status <> 'FINALIZADO'
+        const retorno = [];
 
-            AND
-
-                codPro IN (${placeholders})
-
-            AND
-
-                substr(etaVolk,1,7)=?
-
-            ORDER BY
-
-                etaVolk,
-                numOcp
-
-        `).all(
-
-            ...codigos,
-
-            mes
-
-        );
-
-        let retorno = [];
-
-        const stmtItens = db.prepare(`
-
-            SELECT *
-
-            FROM ordens_compra
-
-            WHERE numOcp=?
-
-            AND status <> 'FINALIZADO'
-
-            ORDER BY
-
-                codPro,
-                codDer
-
-        `);
-
-        ordens.forEach(o=>{
+        ordens.forEach(o => {
 
             retorno.push(
                 ...stmtItens.all(o.numOcp)
@@ -141,7 +169,6 @@ ipcMain.handle(
         });
 
         return retorno;
-
     }
 );
 
@@ -161,7 +188,9 @@ ipcMain.handle("buscarItensOC", (event, numOcp) => {
 
             numOcp=?
 
-            AND status <> 'FINALIZADO'
+            AND etaVolk >= '2025-01-01'
+
+            
 
         ORDER BY
 
@@ -239,11 +268,12 @@ ipcMain.handle(
             FROM ordens_compra
 
             WHERE 
-            status <> 'FINALIZADO'
-            AND
+            
             
             codPro IN (${placeholders})
               AND codDer = ?
+
+              AND etaVolk >= '2025-01-01'
 
         `).all(
             ...codigos,
@@ -431,9 +461,313 @@ ipcMain.handle(
 
 );
 
+
+ipcMain.handle(
+    "excluirCacheHoje",
+    () => {
+        return cache.excluirCacheHoje();
+    }
+);
+
+/*==================================================
+  LER PRODUTOS DO EXCEL
+==================================================*/
+
+ipcMain.handle(
+    "lerProdutosExcel",
+    async (event, caminhoArquivo) => {
+
+        try {
+
+            const workbook =
+                XLSX.readFile(caminhoArquivo);
+
+            const nomeAba =
+                workbook.SheetNames[0];
+
+            const planilha =
+                workbook.Sheets[nomeAba];
+
+            const produtos =
+                XLSX.utils.sheet_to_json(
+                    planilha,
+                    {
+                        defval: ""
+                    }
+                );
+
+            console.log(
+                "Produtos lidos do Excel:",
+                produtos.length
+            );
+
+            console.log(
+                produtos.slice(0, 5)
+            );
+
+            return {
+                sucesso: true,
+                produtos: produtos
+            };
+
+        }
+        catch(erro){
+
+            console.error(
+                "Erro ao ler Excel:",
+                erro
+            );
+
+            return {
+                sucesso: false,
+                erro: erro.message
+            };
+
+        }
+
+    }
+);
+
+/*==================================================
+  SALVAR PRODUTOS NO SQLITE
+==================================================*/
+
+ipcMain.handle(
+    "salvarProdutos",
+    async (event, produtos) => {
+
+        try {
+
+            const stmt = db.prepare(`
+                INSERT INTO produtos
+                (
+                    produto,
+                    descricao
+                )
+                VALUES
+                (
+                    @produto,
+                    @descricao
+                )
+                ON CONFLICT(produto)
+                DO UPDATE SET
+                    descricao = excluded.descricao,
+                    data_alteracao = CURRENT_TIMESTAMP
+            `);
+
+            const inserir =
+                db.transaction((lista) => {
+
+                    for(const item of lista){
+
+                        const encontrarColuna = (obj, nome) => {
+
+    return Object.keys(obj).find(chave =>
+
+        chave
+            .trim()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+        === nome.toLowerCase()
+
+    );
+
+                };
+
+
+                const colunaProduto =
+                    encontrarColuna(item, "produto");
+
+                const colunaDescricao =
+                    encontrarColuna(item, "descricao");
+
+
+                const produto =
+                    String(
+                        item[colunaProduto] ?? ""
+                    ).trim();
+
+                const descricao =
+                    String(
+                        item[colunaDescricao] ?? ""
+                    ).trim();
+
+
+                if(!produto){
+                    continue;
+                }
+
+                        inserirProduto.run({
+                            produto: produto,
+                            descricao: descricao
+                        });
+
+                    }
+
+                });
+
+            const inserirProduto = stmt;
+
+            inserir(produtos);
+
+            return {
+                sucesso: true,
+                quantidade: produtos.length
+            };
+
+        }
+        catch(erro){
+
+            console.error(
+                "Erro ao salvar produtos:",
+                erro
+            );
+
+            return {
+                sucesso: false,
+                erro: erro.message
+            };
+
+        }
+
+    }
+);
+
+
+/*==================================================
+  BUSCAR DESCRIÇÕES DOS PRODUTOS
+==================================================*/
+
+ipcMain.handle(
+    "buscarProdutos",
+    async () => {
+
+        try {
+
+            const produtos =
+                db.prepare(`
+                    SELECT
+                        produto,
+                        descricao
+                    FROM produtos
+                `).all();
+
+            console.log(
+                "Descrições carregadas do SQLite:",
+                produtos.length
+            );
+
+            return produtos;
+
+        }
+        catch(erro){
+
+            console.error(
+                "Erro ao buscar produtos:",
+                erro
+            );
+
+            return [];
+
+        }
+
+    }
+);
+
+
+ipcMain.handle(
+    "exportarXlsx",
+    async (event, dados) => {
+
+        try{
+
+            const resultado =
+                await dialog.showSaveDialog({
+                    title:
+                        "Salvar arquivo Excel",
+
+                    defaultPath:
+                        `${dados.nomeArquivo}.xlsx`,
+
+                    filters:[
+                        {
+                            name:
+                                "Excel",
+                            extensions:[
+                                "xlsx"
+                            ]
+                        }
+                    ]
+                });
+
+
+            if(
+                resultado.canceled ||
+                !resultado.filePath
+            ){
+
+                return {
+                    sucesso:false,
+                    cancelado:true
+                };
+
+            }
+
+
+            const worksheet =
+                XLSX.utils.aoa_to_sheet(
+                    dados.dados
+                );
+
+
+            const workbook =
+                XLSX.utils.book_new();
+
+
+            XLSX.utils.book_append_sheet(
+                workbook,
+                worksheet,
+                "Dados"
+            );
+
+
+            XLSX.writeFile(
+                workbook,
+                resultado.filePath
+            );
+
+
+            return {
+                sucesso:true,
+                caminho:
+                    resultado.filePath
+            };
+
+        }
+        catch(erro){
+
+            console.error(
+                "Erro ao exportar XLSX:",
+                erro
+            );
+
+            return {
+                sucesso:false,
+                erro:
+                    erro.message
+            };
+
+        }
+
+    }
+);
+
 /*==================================================
   CRIAR JANELA
 ==================================================*/
+
+
 
 function criarJanela() {
 
@@ -465,7 +799,7 @@ function criarJanela() {
 
     janela.webContents.setZoomFactor(1.5);
 
-     janela.webContents.openDevTools();
+   /*  janela.webContents.openDevTools(); */
 
     });
 

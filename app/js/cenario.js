@@ -47,25 +47,205 @@ CREATE TABLE IF NOT EXISTS cenario_ordens(
 `);
 function salvarDatasOC(cenarioId, dados){
 
-    console.log("INÍCIO");
-
-    const sql1 = `
-        SELECT id
-        FROM cenario_ordens
-        WHERE cenario_id = ?
-          AND numOcp = ?
-    `;
-
-    console.log("SELECT");
-
-    const existe = db.prepare(sql1).get(
-        cenarioId,
-        dados.numOcp
+    console.log(
+        "=================================="
     );
 
-    console.log("EXISTE:", existe);
+    console.log(
+        "SALVANDO ALTERAÇÃO DA OC NO CENÁRIO"
+    );
+
+    console.log(
+        "cenarioId:",
+        cenarioId
+    );
+
+    console.log(
+        "dados:",
+        dados
+    );
+
+
+    /* =========================================
+       BUSCAR CENÁRIO
+    ========================================= */
+
+    const cenario =
+        db.prepare(`
+            SELECT ordens_json
+            FROM cenarios
+            WHERE id = ?
+        `).get(cenarioId);
+
+
+    if(!cenario){
+
+        throw new Error(
+            "Cenário não encontrado."
+        );
+
+    }
+
+
+    /* =========================================
+       LER ORDENS
+    ========================================= */
+
+    let ordens = [];
+
+
+    try{
+
+        ordens =
+            JSON.parse(
+                cenario.ordens_json || "[]"
+            );
+
+    }
+    catch(erro){
+
+        throw new Error(
+            "Não foi possível ler as ordens do cenário."
+        );
+
+    }
+
+
+    /* =========================================
+       LOCALIZAR TODAS AS LINHAS DA OC
+    ========================================= */
+
+    const ordensOC =
+        ordens.filter(
+            x =>
+                String(x.numOcp) ===
+                String(dados.numOcp)
+        );
+
+
+    if(ordensOC.length === 0){
+
+        throw new Error(
+            "A Ordem de Compra " +
+            dados.numOcp +
+            " não existe neste cenário."
+        );
+
+    }
+
+
+    /* =========================================
+       ALTERAR DATAS
+    ========================================= */
+
+    ordensOC.forEach(ordem => {
+
+        ordem.etd =
+            dados.etd;
+
+        ordem.eta =
+            dados.eta;
+
+        ordem.etaVolk =
+            dados.etaVolk;
+
+    });
+
+
+    /* =========================================
+       ALTERAR QUANTIDADES
+    ========================================= */
+
+    if(
+        Array.isArray(
+            dados.itens
+        )
+    ){
+
+        dados.itens.forEach(item => {
+
+            const indice =
+                Number(
+                    item.indice
+                );
+
+
+            if(
+                !Number.isInteger(
+                    indice
+                )
+            ){
+
+                return;
+
+            }
+
+
+            if(
+                !ordens[indice]
+            ){
+
+                return;
+
+            }
+
+
+            /* GARANTIR QUE É A MESMA OC */
+
+            if(
+                String(
+                    ordens[indice].numOcp
+                )
+                !==
+                String(
+                    dados.numOcp
+                )
+            ){
+
+                return;
+
+            }
+
+
+            ordens[indice].qtdIte =
+                Number(
+                    item.qtdIte
+                ) || 0;
+
+        });
+
+    }
+
+
+    /* =========================================
+       GRAVAR CENÁRIO
+    ========================================= */
+
+    db.prepare(`
+        UPDATE cenarios
+        SET
+            ordens_json = ?,
+            data_alteracao =
+                CURRENT_TIMESTAMP
+        WHERE id = ?
+    `).run(
+
+        JSON.stringify(
+            ordens
+        ),
+
+        cenarioId
+
+    );
+
+
+    console.log(
+        "OC e quantidades salvas com sucesso."
+    );
+
 
     return true;
+
 }
 
 

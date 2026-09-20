@@ -15,7 +15,7 @@
 <div class="cenario-status">
 
     <span id="lblNomeCenario">
-        Cenário: Não salvo
+        Cenário: Padrão
     </span>
 
 
@@ -34,6 +34,8 @@ href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-quartz.css"
 />
 
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+
+
 
 
 <style>
@@ -74,9 +76,13 @@ body{
 
     padding:0 12px;
 
+    box-sizing:border-box;
+
     box-shadow:0 1px 4px rgba(0,0,0,0.04);
 
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
+
+   overflow:visible;
 
 }
 
@@ -441,6 +447,48 @@ button:hover{
 
 </style>
 
+<style>
+
+/* =====================================================
+   GERENCIADOR DE CENÁRIOS
+===================================================== */
+
+.modal-cenarios-box{
+    width:90vw;
+    max-width:1200px;
+}
+
+/* DIVIDE MELHOR A ÁREA */
+#painelListaCenarios{
+    flex:0 0 44%;
+    min-width:0;
+}
+
+#painelDadosCenario{
+    flex:1;
+    min-width:0;
+}
+
+/* LISTA DE CENÁRIOS */
+#gridCenarios{
+    width:100%;
+    height:240px;
+}
+
+/* CAMPOS DO CENÁRIO */
+#txtNomeCenario{
+    height:38px;
+    box-sizing:border-box;
+}
+
+#txtDescricaoCenario{
+    height:130px;
+    box-sizing:border-box;
+    resize:vertical;
+}
+
+</style>
+
 </head>
 
 <body>
@@ -448,14 +496,21 @@ button:hover{
 <div class="topo">
 
     <div id="statusCarregamento">
-
-    Carregando...
-
-</div>
-
-    <div class="titulo">
-        S&OP VOLK
+        Carregando...
     </div>
+
+    <div class="busca-produto">
+        <span>🔎</span>
+
+        <input
+            type="text"
+            id="txtBuscaProduto"
+            placeholder="Descrição ou código..."
+            autocomplete="off"
+        >
+    </div>
+
+ 
 <div class="menuExibir">
 
     <button type="button" id="btnExibir">
@@ -503,28 +558,42 @@ button:hover{
     <div id="menuSOE" class="dropdownConteudo">
 
         <label onclick="menuSOE('falta_atual')">
-            Falta atual
+            Faltas mês atual
         </label>
 
         <label onclick="menuSOE('faltas_previstas')">
             Faltas previstas
         </label>
 
-        <label onclick="menuSOE('forecast')">
-            Alcançar Forecast
-        </label>
+        
 
         <label onclick="menuSOE('excessos')">
-            Excessos
+            Excesso de Estoques
+        </label>
+
+         <label onclick="menuSOE('')">
+            Reposição de Estoques
         </label>
 
     </div>
 
 </div>
 
-<button onclick="abrirTelaCompras()">
-    Compras
-</button>
+<div class="menuDropdown">
+
+    <button onclick="toggleMenuConsulta()">
+        Consulta ▼
+    </button>
+
+    <div id="menuConsulta" class="dropdownConteudo">
+
+        <label onclick="abrirConsultaCompras()">
+            Ordens de Compras
+        </label>
+
+    </div>
+
+</div>
 
 
 <div class="menuDropdown">
@@ -551,22 +620,773 @@ button:hover{
   📁 Cenários
 </button>
 
-<button onclick="salvarCenarioAtual()">
-    💾 Salvar
+<div class="menuDropdown">
+
+    <button onclick="toggleMenuConfiguracao()">
+        ⚙️ Configuração ▼
+    </button>
+
+    <div id="menuConfiguracao" class="dropdownConteudo">
+
+        <label onclick="importarProdutosExcel()">
+            📥 Importar descrição
+        </label>
+
+    </div>
+
+</div>
+
+<button
+    id="btnAtualizar"
+    onclick="atualizar2(true)"
+ 
+>
+    🔄 Atualizar
 </button>
 
+<button
+    
+    onclick="salvarCenarioAtual()"
+>
+    💾 Salvar
+</button>
 
 <button onclick="exportar()">
     Exportar
 </button>
 
+
+
 </div>
 
 <div class="container">
 
-    <div
+   <div
     id="myGrid"
-    class="ag-theme-quartz">
+    class="ag-theme-quartz"
+    tabindex="0">
+</div>
+
+</div>
+
+
+
+<!-- =====================================================
+     MODAL FALTAS MÊS ATUAL
+===================================================== -->
+
+<div
+    id="modalFaltaAtual"
+    style="
+        display:none;
+        position:fixed;
+        inset:0;
+        background:rgba(15,23,42,.45);
+        z-index:9999;
+        align-items:center;
+        justify-content:center;
+    "
+>
+
+    <div
+        style="
+            width:900px;
+            max-width:95%;
+            max-height:85vh;
+            background:white;
+            border-radius:12px;
+            box-shadow:0 20px 50px rgba(0,0,0,.25);
+            display:flex;
+            flex-direction:column;
+            overflow:hidden;
+        "
+    >
+
+        <!-- CABEÇALHO -->
+
+        <div
+            style="
+                padding:16px 20px;
+                border-bottom:1px solid #e2e8f0;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+            "
+        >
+
+            <div>
+
+                <div
+                    style="
+                        font-size:18px;
+                        font-weight:600;
+                        color:#0f172a;
+                    "
+                >
+                    Faltas mês atual
+                </div>
+
+                <div
+                    id="tituloMesFaltaAtual"
+                    style="
+                        font-size:12px;
+                        color:#64748b;
+                        margin-top:3px;
+                    "
+                >
+                </div>
+
+            </div>
+
+            <button onclick="exportarModal('tbodyFaltaAtual','Faltas_Mes_Atual')">
+                📥
+            </button>
+
+            <button
+                onclick="fecharModalFaltaAtual()"
+                style="
+                    border:none;
+                    background:transparent;
+                    font-size:22px;
+                    cursor:pointer;
+                    color:#64748b;
+                "
+            >
+                ×
+            </button>
+
+
+
+        </div>
+
+        <!-- TABELA -->
+
+        <div
+            style="
+                flex:1;
+                overflow:auto;
+                padding:15px;
+            "
+        >
+
+            <table
+                style="
+                    width:100%;
+                    border-collapse:collapse;
+                    font-size:12px;
+                "
+            >
+
+             <thead>
+
+                <tr
+                    style="
+                        background:#f8fafc;
+                        color:#334155;
+                    "
+                >
+
+                    <th style="padding:9px; text-align:left;">
+                        Código
+                    </th>
+
+                    <th style="padding:9px; text-align:left;">
+                        Derivação
+                    </th>
+
+                    <th style="padding:9px; text-align:left;">
+                        Descrição
+                    </th>
+
+                    <th style="padding:9px; text-align:right;">
+                        Qtd Falta
+                    </th>
+
+                    <th style="padding:9px; text-align:right;">
+                        Preço Médio
+                    </th>
+
+                    <th style="padding:9px; text-align:right;">
+                        Valor Total
+                    </th>
+
+                </tr>
+
+            </thead>
+
+                <tbody
+                    id="tbodyFaltaAtual"
+                >
+                </tbody>
+
+                <tfoot
+                    id="tfootFaltaAtual"
+                >
+                </tfoot>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     MODAL FALTAS PREVISTAS
+===================================================== -->
+
+<div
+    id="modalFaltasPrevistas"
+    style="
+        display:none;
+        position:fixed;
+        inset:0;
+        background:rgba(15,23,42,.45);
+        z-index:9999;
+        align-items:center;
+        justify-content:center;
+    "
+>
+
+    <div
+    id="conteudoModalFaltasPrevistas"
+    style="
+        width:1200px;
+        max-width:96%;
+        height:85vh;
+        max-height:85vh;
+        background:white;
+        border-radius:12px;
+        box-shadow:0 20px 50px rgba(0,0,0,.25);
+        display:flex;
+        flex-direction:column;
+        overflow:hidden;
+        transition:all .2s ease;
+    "
+>
+
+        <!-- CABEÇALHO -->
+
+        <div
+            style="
+                padding:16px 20px;
+                border-bottom:1px solid #e2e8f0;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+            "
+        >
+
+            <div>
+
+                <div
+                    style="
+                        font-size:18px;
+                        font-weight:600;
+                        color:#0f172a;
+                    "
+                >
+                    Faltas previstas
+                </div>
+
+                <div
+                    id="tituloFaltasPrevistas"
+                    style="
+                        font-size:12px;
+                        color:#64748b;
+                        margin-top:3px;
+                    "
+                >
+                </div>
+
+            </div>
+
+
+           <div style="display:flex;align-items:center;gap:8px;">
+
+            <button
+    onclick="exportarModal('tbodyFaltasPrevistas','Faltas_Previstas')"
+    title="Exportar"
+    style="
+        border:none;
+        background:transparent;
+        font-size:18px;
+        cursor:pointer;
+        color:#64748b;
+        width:34px;
+        height:34px;
+        border-radius:6px;
+    "
+>
+    📥
+</button>
+
+    <!-- Maximizar -->
+    <button
+        onclick="maximizarFaltasPrevistas()"
+        title="Maximizar"
+        style="
+            border:none;
+            background:transparent;
+            font-size:20px;
+            cursor:pointer;
+            color:#64748b;
+            width:34px;
+            height:34px;
+            border-radius:6px;
+        "
+    >⛶</button>
+
+    <!-- Fechar -->
+    <button
+        onclick="fecharModalFaltasPrevistas()"
+        title="Fechar"
+        style="
+            border:none;
+            background:transparent;
+            font-size:24px;
+            font-weight:600;
+            cursor:pointer;
+            color:#64748b;
+            width:34px;
+            height:34px;
+            border-radius:6px;
+        "
+    >×</button>
+
+</div>
+
+        </div>
+
+
+        <!-- TABELA -->
+
+        <div
+            style="
+                flex:1;
+                overflow:auto;
+                padding:15px;
+            "
+        >
+
+            <table
+                style="
+                    width:100%;
+                    border-collapse:collapse;
+                    font-size:12px;
+                "
+            >
+
+               <thead
+                    style="
+                        position:sticky;
+                        top:0;
+                        z-index:10;
+                    "
+                >
+                    <tr
+                        style="
+                            background:#f8fafc;
+                            color:#334155;
+                        "
+                    >
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:left;
+                                white-space:nowrap;
+                            "
+                        >
+                            Código
+                        </th>
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:left;
+                            "
+                        >
+                            Derivação
+                        </th>
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:left;
+                            "
+                        >
+                            Descrição
+                        </th>
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Preço Médio
+                        </th>
+
+
+                        <!-- OUTUBRO -->
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Out Qtd
+                        </th>
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Out Valor
+                        </th>
+
+
+                        <!-- NOVEMBRO -->
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Nov Qtd
+                        </th>
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Nov Valor
+                        </th>
+
+
+                        <!-- DEZEMBRO -->
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Dez Qtd
+                        </th>
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Dez Valor
+                        </th>
+
+
+                        <!-- JANEIRO -->
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Jan Qtd
+                        </th>
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Jan Valor
+                        </th>
+
+
+                        <!-- TOTAL -->
+
+                        <th
+                            style="
+                                padding:9px;
+                                text-align:right;
+                            "
+                        >
+                            Valor Total
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody
+                    id="tbodyFaltasPrevistas"
+                >
+                </tbody>
+
+
+                <tfoot
+                    id="tfootFaltasPrevistas"
+                >
+                </tfoot>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- =====================================================
+     MODAL EXCESSOS PREVISTOS
+===================================================== -->
+
+<div
+    id="modalExcessosPrevistos"
+    style="
+        display:none;
+        position:fixed;
+        inset:0;
+        background:rgba(15,23,42,.45);
+        z-index:9999;
+        align-items:center;
+        justify-content:center;
+    "
+>
+
+    <div
+        id="conteudoModalExcessosPrevistos"
+        style="
+            width:1200px;
+            max-width:96%;
+            height:85vh;
+            max-height:85vh;
+            background:white;
+            border-radius:12px;
+            box-shadow:0 20px 50px rgba(0,0,0,.25);
+            display:flex;
+            flex-direction:column;
+            overflow:hidden;
+            transition:all .2s ease;
+        "
+    >
+
+        <!-- CABEÇALHO -->
+
+        <div
+            style="
+                padding:16px 20px;
+                border-bottom:1px solid #e2e8f0;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+            "
+        >
+
+            <div>
+
+                <div
+                    style="
+                        font-size:18px;
+                        font-weight:600;
+                        color:#0f172a;
+                    "
+                >
+                    Excessos previstos
+                </div>
+
+                <div
+                    id="tituloExcessosPrevistos"
+                    style="
+                        font-size:12px;
+                        color:#64748b;
+                        margin-top:3px;
+                    "
+                ></div>
+
+            </div>
+
+
+            <!-- BOTÕES -->
+
+            <div
+                style="
+                    display:flex;
+                    align-items:center;
+                    gap:5px;
+                "
+            >
+
+                <!-- MAXIMIZAR / RESTAURAR -->
+
+                <button
+                    id="btnMaximizarExcessos"
+                    onclick="window.maximizarExcessosPrevistos()"
+                    title="Maximizar"
+                    style="
+                        border:none;
+                        background:transparent;
+                        font-size:20px;
+                        cursor:pointer;
+                        color:#64748b;
+                        width:34px;
+                        height:34px;
+                        border-radius:6px;
+                    "
+                >
+                    ⛶
+                </button>
+
+
+                <button
+                    onclick="exportarModal('tbodyExcessosPrevistos','Excesso_Estoques')"
+                    title="Exportar"
+                    style="
+                        border:none;
+                        background:transparent;
+                        font-size:18px;
+                        cursor:pointer;
+                        color:#64748b;
+                        width:34px;
+                        height:34px;
+                        border-radius:6px;
+                    "
+                >
+                    📥
+                </button>
+
+
+                <!-- FECHAR -->
+
+                <button
+                    onclick="window.fecharModalExcessosPrevistos()"
+                    title="Fechar"
+                    style="
+                        border:none;
+                        background:transparent;
+                        font-size:24px;
+                        font-weight:600;
+                        cursor:pointer;
+                        color:#64748b;
+                        width:34px;
+                        height:34px;
+                        border-radius:6px;
+                    "
+                >
+                    ×
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- TABELA -->
+
+        <div
+            style="
+                flex:1;
+                overflow:auto;
+                padding:15px;
+                min-height:0;
+            "
+        >
+
+            <table
+                style="
+                    width:100%;
+                    border-collapse:collapse;
+                    font-size:12px;
+                    min-width:1100px;
+                "
+            >
+
+                <thead
+                    style="
+                        position:sticky;
+                        top:0;
+                        z-index:10;
+                    "
+                >
+
+                    <tr
+                        style="
+                            background:#f8fafc;
+                            color:#334155;
+                            box-shadow:0 2px 4px rgba(0,0,0,.08);
+                        "
+                    >
+
+                        <th style="padding:10px;text-align:left;">
+                            Código
+                        </th>
+
+                        <th style="padding:10px;text-align:left;">
+                            Derivação
+                        </th>
+
+                        <th style="padding:10px;text-align:left;">
+                            Descrição
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            Mês Atual
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            M+1
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            M+2
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            M+3
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            M+4
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            M+5
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            M+6
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            Total
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="tbodyExcessosPrevistos"></tbody>
+
+                <tfoot id="tfootExcessosPrevistos"></tfoot>
+
+            </table>
+
+        </div>
+
     </div>
 
 </div>
@@ -709,6 +1529,23 @@ async function carregarProdutos(){
 
     const produtos = await resposta.json()
 
+        /* =====================================================
+       DESCRIÇÕES OFICIAIS DO SQLITE
+    ===================================================== */
+
+    const descricoes =
+        await window.api.buscarProdutos();
+
+    const mapaDescricoes = {};
+
+    descricoes.forEach(item => {
+
+        mapaDescricoes[
+            String(item.produto).trim()
+        ] = item.descricao || '';
+
+    });
+
    /*  console.log(produtos) */
 
     /* SOMENTE ATIVOS */
@@ -730,16 +1567,16 @@ async function carregarProdutos(){
     /* MONTAR GRID */
 
     return ativos.map(p => ({
-
         tipo:'normal',
-
 
         linha:p.desGru || '',
 
+        descricao:mapaDescricoes[
+            String(p.code).trim()
+        ] || p.desGru || '',
+
         codigo:p.code || '',
-
         tam:p.derivation || '',
-
         nivel:p.qtd || '2,3',
 
         custo_medio:0,
@@ -856,7 +1693,7 @@ const columnDefs = [
     headerName:'Linha',
     field:'linha',
     pinned:'left',
-    width:90,
+    width:70,
     
 
     filter:true,
@@ -872,6 +1709,14 @@ const columnDefs = [
     cellClass:estiloLinha
 
 
+},
+
+{
+    headerName:'Descrição',
+    field:'descricao',
+    pinned:'left',
+    width:130,
+    cellClass:estiloLinha
 },
 
     {
@@ -911,6 +1756,7 @@ const columnDefs = [
     pinned:'left',
     cellClass:estiloLinha
 },
+
 
 
 
@@ -1540,8 +2386,8 @@ const mesAtualFilhos = [
 
                 valueFormatter: p =>
                     Number(p.value || 0).toLocaleString("pt-BR",{
-                        minimumFractionDigits:0,
-                        maximumFractionDigits:0
+                        minimumFractionDigits:2,
+                        maximumFractionDigits:2
                     }),
 
                 cellStyle: p => {
@@ -1745,8 +2591,8 @@ const mesAtualFilhos = [
 
         {
 
-            minimumFractionDigits:2,
-            maximumFractionDigits:2
+            minimumFractionDigits:0,
+            maximumFractionDigits:0,
 
         }
 
@@ -1784,8 +2630,8 @@ const mesAtualFilhos = [
 
         {
 
-            minimumFractionDigits:2,
-            maximumFractionDigits:2
+            minimumFractionDigits:0,
+            maximumFractionDigits:0
 
         }
 
@@ -1996,57 +2842,67 @@ meses.slice(1).forEach(mes => {
             field:`${mes}_${c.campo}`,
 
             width:70,
+            valueFormatter:(p)=>{
 
-           valueFormatter:(p)=>{
+                /* CAMPOS DE QUANTIDADE - SEM CASAS DECIMAIS */
 
-                    if(
-
-                        c.campo == 'cf_fator'
-
-                    ){
-
-                        return Number(
-
-                            p.value || 0
-
-                        ).toFixed(3)
-
-                    }
+                if(
+                    c.campo == 'forecast' ||
+                    c.campo == 'entrada' ||
+                    c.campo == 'Qtd_Simu' ||
+                    c.campo == 'est_final_Média' ||
+                    c.campo == 'est_final' ||
+                    c.campo == 'cf_qtd_disp' ||
+                    c.campo == 'cf_qtd_final'
+                ){
 
                     return Number(
-
                         p.value || 0
-
                     ).toLocaleString(
-
                         'pt-BR',
-
                         {
-
-                            minimumFractionDigits:2,
-                            maximumFractionDigits:2
-
+                            minimumFractionDigits:0,
+                            maximumFractionDigits:0
                         }
+                    );
 
-                    )
+                }
 
-                },
+                /* FATOR */
+
+                if(c.campo == 'cf_fator'){
+
+                    return Number(
+                        p.value || 0
+                    ).toFixed(3);
+
+                }
+
+                /* DEMAIS CAMPOS */
+
+                return Number(
+                    p.value || 0
+                ).toLocaleString(
+                    'pt-BR',
+                    {
+                        minimumFractionDigits:2,
+                        maximumFractionDigits:2
+                    }
+                );
+
+            },
 
             editable:
 
 
-            c.campo == 'Qtd_Simu'
-
+           c.campo == 'Qtd_Simu'
             ||
-
+            c.campo == 'cf_fob_unit'
+            ||
             c.campo == 'cf_fob_simu'
-
             ||
-
             c.campo == 'cf_fator'
-
             ||
-
             c.campo == 'cf_dolar',
 
         
@@ -2091,6 +2947,14 @@ meses.slice(1).forEach(mes => {
 
                     classes.push('negativo')
 
+                }
+
+                /* SIMULAÇÃO POSITIVA */
+                if(
+                    c.campo == 'Qtd_Simu' &&
+                    params.value > 0
+                ){
+                    classes.push('simulacao-positiva')
                 }
 
                 /* BORDA FINAL MÊS */
@@ -2149,6 +3013,98 @@ const gridOptions = {
 
     animateRows:false,
 
+    isExternalFilterPresent: () => {
+
+    const busca =
+        document.getElementById("txtBuscaProduto")?.value
+        .trim();
+
+    return busca !== "";
+},
+
+doesExternalFilterPass: (params) => {
+
+    if(!params.data){
+        return true;
+    }
+
+    const busca =
+        document.getElementById("txtBuscaProduto")?.value
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"");
+
+    /* SEM BUSCA */
+    if(!busca){
+        return true;
+    }
+
+    /* TOTAL GERAL */
+    if(params.data.tipo === "total"){
+        return true;
+    }
+
+    /* SUBTOTAL */
+    if(params.data.tipo === "subtotal"){
+
+        const codigoSubtotal =
+            String(params.data.codigo || "")
+            .replace(/^TOTAL\s+/i, "")
+            .trim();
+
+        return rowData.some(item => {
+
+            if(item.tipo !== "normal"){
+                return false;
+            }
+
+            if(
+                String(item.codigo || "").trim()
+                !== codigoSubtotal
+            ){
+                return false;
+            }
+
+            const descricao =
+                String(item.descricao || "")
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g,"");
+
+            const codigo =
+                String(item.codigo || "")
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g,"");
+
+            return (
+                descricao.includes(busca) ||
+                codigo.includes(busca)
+            );
+
+        });
+    }
+
+    /* PRODUTO NORMAL */
+    const descricao =
+        String(params.data.descricao || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"");
+
+    const codigo =
+        String(params.data.codigo || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"");
+
+    return (
+        descricao.includes(busca) ||
+        codigo.includes(busca)
+    );
+},
+
  onCellDoubleClicked:(params)=>{
 
     if(!params.data){
@@ -2165,39 +3121,144 @@ const gridOptions = {
 
     const campo = params.colDef.field;
 
-    if(!campo.endsWith("_entrada")){
+    if(
+    campo != "Est_Entrada" &&
+    !campo.endsWith("_entrada")
+        ){
+            return;
+        }
+
+        const campoEntrada =
+            campo == "Est_Entrada"
+                ? `${mesAtual}_entrada`
+                : campo;
+
+        abrirOrdensProduto(
+            params.data,
+            campoEntrada
+        );
+
+        },
+
+
+
+
+   onCellValueChanged:(params)=>{
+
+    const campo =
+        params.colDef.field;
+
+    /* =========================================
+       ACEITAR SOMENTE CAMPOS EDITÁVEIS
+    ========================================= */
+
+    if(
+        !campo.includes('_Qtd_Simu')
+        &&
+        !campo.includes('_cf_fob_unit')
+        &&
+        !campo.includes('_cf_fob_simu')
+        &&
+        !campo.includes('_cf_fator')
+        &&
+        !campo.includes('_cf_dolar')
+    ){
         return;
     }
 
-    abrirOrdensProduto(
-        params.data,
-        campo
-    );
+    /* =========================================
+       IDENTIFICAR O MÊS
+    ========================================= */
 
-},
+    let mes;
 
+    if(campo.includes('_Qtd_Simu')){
 
+        mes =
+            campo.replace(
+                '_Qtd_Simu',
+                ''
+            );
 
+    }
+    else if(campo.includes('_cf_fob_unit')){
 
-    onCellValueChanged:(params)=>{
+        mes =
+            campo.replace(
+                '_cf_fob_unit',
+                ''
+            );
 
-    if(
-        !params.colDef.field.includes('_Qtd_Simu')
-    ){
-        return
+    }
+    else if(campo.includes('_cf_fob_simu')){
+
+        mes =
+            campo.replace(
+                '_cf_fob_simu',
+                ''
+            );
+
+    }
+    else if(campo.includes('_cf_fator')){
+
+        mes =
+            campo.replace(
+                '_cf_fator',
+                ''
+            );
+
+    }
+    else if(campo.includes('_cf_dolar')){
+
+        mes =
+            campo.replace(
+                '_cf_dolar',
+                ''
+            );
+
     }
 
-    const mes =
-        params.colDef.field.replace('_Qtd_Simu','')
+    /* =========================================
+       CF FOB UNIT
+       TRANSFORMAR UNITÁRIO EM FOB TOTAL
+    ========================================= */
+
+    if(
+        campo.includes('_cf_fob_unit')
+    ){
+
+        const entrada =
+            Number(
+                params.data[
+                    `${mes}_entrada`
+                ] || 0
+            );
+
+        const fobUnit =
+            Number(
+                params.newValue || 0
+            );
+
+        params.data[
+            `${mes}_cf_fob_total`
+        ] =
+            entrada * fobUnit;
+    }
+
+    /* =========================================
+       RECALCULAR A LINHA
+    ========================================= */
 
     recalcularSimulacao(
         params.data,
         mes
-    )
+    );
 
-    /* RECRIA SUBTOTAIS E TOTAL */
+    /* =========================================
+       RECRIAR SUBTOTAIS E TOTAL
+    ========================================= */
 
-    const dadosOriginais = []
+    const dadosOriginais = [];
 
     gridApi.forEachNode(node => {
 
@@ -2206,22 +3267,30 @@ const gridOptions = {
             &&
             node.data.tipo != 'total'
         ){
-            dadosOriginais.push(node.data)
+
+            dadosOriginais.push(
+                node.data
+            );
+
         }
 
-    })
+    });
 
     const novo =
-        gerarSubtotais(dadosOriginais)
+        gerarSubtotais(
+            dadosOriginais
+        );
 
     gridApi.setGridOption(
-        'rowData',
-        novo
-    )
+            'rowData',
+            novo
+        );
 
-    
+    gridApi.refreshCells({
+        force:true
+    });
 
-  },
+},
    
     
 
@@ -2250,16 +3319,190 @@ const gridOptions = {
   
       }
 
-      /* =====================================================
-       INICIAR SISTEMA
-      ===================================================== */
+      
+/* =====================================================
+   INICIAR SISTEMA
+===================================================== */
 
 
+let timerAtualizacao = null;
+let inicioAtualizacao = null;
+async function atualizar2(){
+
+    /* =========================================
+       CENÁRIO
+    ========================================= */
+
+    if(cenarioSelecionado){
+
+       const confirmar = await mostrarConfirmacao(
+        "Você está em um cenário salvo.\n\n" +
+        "Deseja voltar para o Cenário Padrão e atualizar os dados?"
+    );
+
+    if(!confirmar){
+        return;
+    }
+
+        cenarioSelecionado = null;
+        comprasCenario = [];
+
+        document.getElementById(
+            "lblNomeCenario"
+        ).textContent = "Cenário: Padrão";
+    }
+
+
+    /* =========================================
+       INICIAR TIMER
+    ========================================= */
+
+    const botao =
+        document.getElementById("btnAtualizar");
+
+    const inicio =
+        Date.now();
+
+    const timer =
+        setInterval(() => {
+
+            const segundos =
+                Math.floor(
+                    (Date.now() - inicio) / 1000
+                );
+
+            botao.textContent =
+                `⏳ Atualizando ${segundos}s`;
+
+        }, 1000);
+
+
+    botao.disabled = true;
+
+    botao.textContent =
+        "⏳ Atualizando 0s";
+
+
+    try{
+
+        console.log("🔄 Iniciando atualização...");
+
+
+        /* =========================================
+           ZERAR GRID
+        ========================================= */
+
+        rowData = [];
+
+        ordensCache = [];
+
+        if(gridApi){
+
+            gridApi.setGridOption(
+                "rowData",
+                []
+            );
+
+        }
+
+        console.log("🧹 Grid zerada.");
+
+
+        /* =========================================
+           EXCLUIR CACHE
+        ========================================= */
+
+        await window.api.excluirCacheHoje();
+
+        console.log("🗑️ Cache excluído.");
+
+
+        /* =========================================
+           EXECUTAR SISTEMA NOVAMENTE
+        ========================================= */
+
+        await iniciarSistema();
+
+
+        /* =========================================
+           SUCESSO
+        ========================================= */
+
+        const status =
+            document.getElementById(
+                "statusCarregamento"
+            );
+
+        status.textContent =
+            "✅ Atualizado com sucesso!";
+
+        status.style.color =
+            "#16a34a";
+
+
+        setTimeout(() => {
+
+            status.textContent = "";
+
+            status.style.color = "";
+
+        }, 3000);
+
+
+    }
+    catch(erro){
+
+        console.error(
+            "❌ Erro ao atualizar:",
+            erro
+        );
+
+        const status =
+            document.getElementById(
+                "statusCarregamento"
+            );
+
+        status.textContent =
+            "❌ Erro ao atualizar";
+
+        status.style.color =
+            "#dc2626";
+
+
+    }
+  finally{
+
+    clearInterval(timer);
+
+    botao.disabled = false;
+
+    setTimeout(() => {
+        window.focus();
+    }, 100);
+
+    botao.textContent =
+        "✅ Atualizado";
+
+
+    setTimeout(() => {
+
+        botao.textContent =
+            "🔄 Atualizar";
+
+    }, 2000);
+
+}
+
+}
+
+/* =====================================================
+   INICIAR SISTEMA
+===================================================== */
 
 
 async function iniciarSistema(){
 
-
+console.time("⏱️ INICIO TOTAL");
 
 
     /* =========================================
@@ -2282,6 +3525,8 @@ if(cache){
 
     ocultarGruposIniciais();
 
+    document.getElementById("statusCarregamento").textContent = "";
+
     return;
 
 }
@@ -2290,9 +3535,22 @@ console.log("Cache não encontrado.");
     
 
     rowData =
-    await carregarProdutos()
 
-    await carregarGruposProdutos();
+    console.time("API Produtos");
+
+rowData =
+    await carregarProdutos();
+
+console.timeEnd("API Produtos");
+
+
+
+   console.time("API Grupos");
+
+await carregarGruposProdutos();
+
+console.timeEnd("API Grupos");
+
 
     removerProdutosAgrupados();
     
@@ -2383,25 +3641,67 @@ rowData.forEach(item => {
 
   
 
-    await carregarForecasts(rowData)
 
-    await carregarForecastsPassados(rowData)
 
-    await carregarFaturado(rowData)
+await carregarForecasts(rowData);
+
+
+    
+
+await carregarForecastsPassados(rowData);
+
+
+
+await carregarFaturado(rowData);
+
 
     calcularMedia3Meses(rowData)
 
-    await carregarEstoques(rowData)
 
-    await carregarEntradas(rowData)
+await carregarEstoques(rowData);
 
-    await carregarPedidos(rowData)
 
-    await carregarFatores(rowData)
 
-    await carregarDolar(rowData)
 
-    await carregarFobSimulado(rowData)
+    /* =========================================
+    BUSCAR ORDENS - PRIMEIRA CARGA DO DIA
+    ========================================= */
+
+
+const ordens =
+    await window.api.buscarOrdens();
+
+
+    ordensCache =
+        structuredClone(ordens);
+
+
+    /* =========================================
+    CALCULAR ENTRADAS
+    ========================================= */
+
+
+
+await carregarEntradas(
+    rowData,
+    ordensCache
+);
+
+
+
+
+await carregarPedidos(rowData);
+
+
+await carregarFatores(rowData);
+
+
+await carregarDolar(rowData);
+
+
+await carregarFobSimulado(rowData);
+
+
 
     recalcularPlanejamento(rowData,true)
 
@@ -2415,12 +3715,12 @@ rowData.forEach(item => {
         ordensCache
 
     );
-
-    console.log("Cache salvo.");
-
     
 
 }
+
+
+
 
 
 
@@ -2438,6 +3738,25 @@ const gridApi = agGrid.createGrid(
     gridOptions
 
 )
+
+
+/* =====================================================
+   BUSCA DE PRODUTO
+===================================================== */
+
+const txtBuscaProduto =
+    document.getElementById("txtBuscaProduto");
+
+txtBuscaProduto.addEventListener(
+    "input",
+    () => {
+
+        gridApi.onFilterChanged();
+
+    }
+);
+
+
 function ocultarGruposIniciais(){
 
     [
@@ -2483,6 +3802,218 @@ function exportar(){
 
 }
 
+async function exportarModal(
+    idElemento,
+    nomeArquivo
+){
+
+    const elemento =
+        document.getElementById(
+            idElemento
+        );
+
+
+    if(!elemento){
+
+        mostrarAlerta(
+            "Não foi possível encontrar os dados para exportação."
+        );
+
+        return;
+    }
+
+
+    let tabela = null;
+
+
+    /* =========================================
+       O PRÓPRIO ELEMENTO É A TABELA
+    ========================================= */
+
+    if(
+        elemento.tagName &&
+        elemento.tagName.toLowerCase() ===
+        "table"
+    ){
+
+        tabela = elemento;
+
+    }
+
+    else{
+
+        /* procura tabela dentro */
+
+        tabela =
+            elemento.querySelector(
+                "table"
+            );
+
+        /* se for tbody */
+
+        if(!tabela){
+
+            tabela =
+                elemento.closest(
+                    "table"
+                );
+
+        }
+
+    }
+
+
+    if(!tabela){
+
+        mostrarAlerta(
+            "Nenhuma tabela encontrada para exportação."
+        );
+
+        return;
+    }
+
+
+    /* =========================================
+       CONVERTER HTML → MATRIZ
+    ========================================= */
+
+    const dados = [];
+
+
+    const linhas =
+        tabela.querySelectorAll(
+            "tr"
+        );
+
+
+    linhas.forEach(linha => {
+
+        const colunas =
+            linha.querySelectorAll(
+                "th, td"
+            );
+
+
+        const linhaDados = [];
+
+
+        colunas.forEach(coluna => {
+
+            const input =
+                coluna.querySelector(
+                    "input"
+                );
+
+
+            let valor;
+
+
+            if(input){
+
+                valor =
+                    input.value;
+
+            }
+            else{
+
+                valor =
+                    coluna.innerText;
+
+            }
+
+
+            valor =
+                String(
+                    valor || ""
+                )
+                .replace(
+                    /\r?\n|\r/g,
+                    " "
+                )
+                .replace(
+                    /\s+/g,
+                    " "
+                )
+                .trim();
+
+
+            linhaDados.push(
+                valor
+            );
+
+        });
+
+
+        dados.push(
+            linhaDados
+        );
+
+    });
+
+
+    if(
+        dados.length === 0
+    ){
+
+        mostrarAlerta(
+            "Não existem dados para exportar."
+        );
+
+        return;
+    }
+
+
+    /* =========================================
+       ENVIAR PARA O MAIN
+    ========================================= */
+
+    const resultado =
+        await window.api.exportarXlsx({
+
+            nomeArquivo:
+                nomeArquivo,
+
+            dados:
+                dados
+
+        });
+
+
+    if(
+        resultado &&
+        resultado.cancelado
+    ){
+
+        return;
+
+    }
+
+
+    if(
+        !resultado ||
+        !resultado.sucesso
+    ){
+
+        mostrarAlerta(
+            "Erro ao exportar Excel:\n\n" +
+            (
+                resultado?.erro ||
+                "Erro desconhecido."
+            )
+        );
+
+        return;
+
+    }
+
+
+    console.log(
+        "Excel salvo em:",
+        resultado.caminho
+    );
+
+}
+
 
 
 
@@ -2493,27 +4024,28 @@ function toggleGrupo(grupo, checkbox){
 
     const mostrar = checkbox.checked;
 
-    gridOptions.columnDefs.forEach(col=>{
+    const campos = [];
+
+    gridOptions.columnDefs.forEach(col => {
 
         if(!col.children) return;
 
-        col.children.forEach(filho=>{
+        col.children.forEach(filho => {
 
-            if(filho.grupo===grupo){
-
-                gridApi.setColumnsVisible(
-
-                    [filho.field],
-
-                    mostrar
-
-                );
-
+            if(filho.grupo === grupo){
+                campos.push(filho.field);
             }
 
         });
 
     });
+
+    if(campos.length === 0) return;
+
+    gridApi.setColumnsVisible(
+        campos,
+        mostrar
+    );
 
 }
 
@@ -2576,6 +4108,16 @@ document.addEventListener("click", function(e){
         "
     >
 
+       <button
+            onclick="exportarModal('conteudoCme','Custo_Medio')"
+            style="
+                margin-bottom:10px;
+                padding:6px 12px;
+            "
+        >
+            📥 Exportar Excel
+        </button>
+
         <button
             onclick="fecharCme()"
             style="
@@ -2587,6 +4129,8 @@ document.addEventListener("click", function(e){
         </button>
 
         <div id="conteudoCme"></div>
+
+      
 
     </div>
 
@@ -2643,12 +4187,11 @@ Fechar
 
     </div>
 
-    <button
-        onclick="salvarAlteracoes()">
-
-        💾 Salvar Alterações
-
-    </button>
+   <button
+    onclick="salvarAlteracoes()"
+>
+    💾 Salvar
+</button>
 
 </div>
 
@@ -2659,6 +4202,262 @@ Fechar
 </div>
 
 </div>
+</div>
+
+
+<!-- =====================================================
+     CONSULTA GERAL DE ORDENS DE COMPRA
+===================================================== -->
+
+<div
+    id="modalConsultaCompras"
+    style="
+        display:none;
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,.45);
+        z-index:999999;
+    "
+>
+
+    <div
+        style="
+            background:white;
+            width:96%;
+            height:94%;
+            margin:15px auto;
+            border-radius:10px;
+            padding:15px;
+            box-sizing:border-box;
+            display:flex;
+            flex-direction:column;
+            overflow:hidden;
+        "
+    >
+
+        <!-- CABEÇALHO -->
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:12px;
+            "
+        >
+
+            <h2
+                style="
+                    margin:0;
+                    font-size:17px;
+                "
+            >
+                📋 Ordens de Compra
+            </h2>
+
+
+            <button
+                onclick="exportarModal('tabelaConsultaCompras','Ordens_de_Compra')"
+                title="Exportar"
+            >
+                📥 Exportar
+            </button>
+
+            <button
+                onclick="fecharConsultaCompras()"
+            >
+                Fechar
+            </button>
+
+        </div>
+
+
+        <!-- FILTROS -->
+
+        <div
+            style="
+                display:flex;
+                gap:8px;
+                flex-wrap:wrap;
+                align-items:end;
+                margin-bottom:12px;
+                padding:10px;
+                background:#f8fafc;
+                border:1px solid #e2e8f0;
+                border-radius:8px;
+            "
+        >
+
+            <div>
+                <label>OC</label>
+                <br>
+                <input
+                    type="text"
+                    id="filtroOC"
+                    placeholder="Número da OC"
+                >
+            </div>
+
+
+            <div>
+                <label>Embarque</label>
+                <br>
+                <input
+                    type="text"
+                    id="filtroEmbarque"
+                    placeholder="Via / Embarque"
+                >
+            </div>
+
+
+            <div>
+                <label>Lote</label>
+                <br>
+                <input
+                    type="text"
+                    id="filtroLote"
+                    placeholder="Lote"
+                >
+            </div>
+
+
+            <div>
+                <label>Produto</label>
+                <br>
+                <input
+                    type="text"
+                    id="filtroProduto"
+                    placeholder="Código ou descrição"
+                >
+            </div>
+<div>
+    <label>Fornecedor</label>
+    <br>
+    <input
+        type="text"
+        id="filtroFornecedor"
+        placeholder="Fornecedor"
+    >
+</div>
+
+<div>
+    <label>Status</label>
+    <br>
+    <select id="filtroStatus">
+        <option value="">Todos</option>
+        <option value="Em produção">Em produção</option>
+        <option value="Finalizado">Finalizado</option>
+    </select>
+</div>
+
+            <div>
+                <label>ETA Volk inicial</label>
+                <br>
+                <input
+                    type="date"
+                    id="filtroEtaVolkInicial"
+                >
+            </div>
+
+
+            <div>
+                <label>ETA Volk final</label>
+                <br>
+                <input
+                    type="date"
+                    id="filtroEtaVolkFinal"
+                >
+            </div>
+
+
+            <button
+                onclick="buscarConsultaCompras()"
+                style="
+                    height:32px;
+                    padding:0 16px;
+                    font-weight:bold;
+                "
+            >
+                🔎 Buscar
+            </button>
+
+
+            <button
+                onclick="limparFiltrosCompras()"
+                style="
+                    height:32px;
+                    padding:0 14px;
+                "
+            >
+                Limpar
+            </button>
+
+        </div>
+
+
+        <!-- ÁREA DA TABELA -->
+
+        <div
+            style="
+                flex:1;
+                min-height:0;
+                overflow:auto;
+                border:1px solid #e2e8f0;
+                border-radius:8px;
+                background:white;
+            "
+        >
+
+            <table
+                id="tabelaConsultaCompras"
+                style="
+                    width:max-content;
+                    min-width:100%;
+                    border-collapse:collapse;
+                    font-size:10px;
+                    white-space:nowrap;
+                "
+            >
+
+                <thead>
+
+                    <tr>
+
+                        <th>OC</th>
+                        <th>Lote</th>
+                        <th>Produto</th>
+                        <th>Der</th>
+                        <th>Descrição</th>
+
+                        <th>Qtd</th>
+                        <th>Valor Unit.</th>
+                        <th>Valor Total</th>
+
+                        <th>Embarque</th>
+
+                        <th>ETD</th>
+                        <th>ETA</th>
+                        <th>ETA Volk</th>
+
+                        <th>Fornecedor</th>
+                        <th>Status</th>
+                        <th>Importador</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody
+                    id="tbodyConsultaCompras"
+                >
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
 </div>
 
 
@@ -2693,6 +4492,13 @@ Fechar
                 </div>
 
             </div>
+
+           <button
+                onclick="exportarModal('tabelaResumoCenario','Resumo_do_Cenario')"
+                class="resumo-fechar"
+            >
+                📥 Exportar Excel
+            </button>
 
 
             <button
@@ -2814,28 +4620,52 @@ Fechar
         </div>
 
         <!-- Rodapé -->
+<div class="modal-footer">
 
-        <div class="modal-footer">
+    <div>
 
-            <div>
+        <button
+            id="btnNovoCenario"
+            onclick="novoCenario()">
+            Novo
+        </button>
 
-                <button id="btnNovoCenario" onclick="novoCenario()">Novo</button>
+        <button
+            id="btnExcluirCenario"
+            onclick="excluirCenario()">
+            Excluir
+        </button>
 
-                <button id="btnExcluirCenario" onclick="excluirCenario()">Excluir</button>
+        <button
+            id="btnPadraoCenario"
+            onclick="voltarCenarioPadrao()">
+            🏠 Padrão
+        </button>
 
-            </div>
+    </div>
 
-            <div>
+    <div>
 
-                <button id="btnAbrirCenario" onclick="abrirCenarioSelecionado()">Abrir</button>
+        <button
+            id="btnAbrirCenario"
+            onclick="abrirCenarioSelecionado()">
+            Abrir
+        </button>
 
-               <button id="btnSalvarCenario" onclick="salvarCenario()">Salvar</button>
+        <button
+            id="btnSalvarCenario"
+            onclick="salvarCenario()">
+            Salvar
+        </button>
 
-                <button onclick="fecharModalCenarios()">Fechar</button>
+        <button
+            onclick="fecharModalCenarios()">
+            Fechar
+        </button>
 
-            </div>
+    </div>
 
-        </div>
+</div>
 
     </div>
 
@@ -2876,11 +4706,547 @@ function toggleMenuSOE(){
 
 }
 
+
+function toggleMenuConsulta(){
+
+    const menu =
+        document.getElementById("menuConsulta");
+
+    menu.style.display =
+        menu.style.display == "block"
+            ? "none"
+            : "block";
+
+}
+
+
+function toggleMenuConfiguracao(){
+
+    const menu =
+        document.getElementById("menuConfiguracao");
+
+    menu.style.display =
+        menu.style.display == "block"
+            ? "none"
+            : "block";
+
+}
+
+document.addEventListener("click", function(e){
+
+    const menu = document.getElementById("menuSOE");
+
+    if(
+        menu.style.display === "block" &&
+        !e.target.closest("#menuSOE") &&
+        !e.target.closest(".menuDropdown button")
+    ){
+        menu.style.display = "none";
+    }
+
+});
+
+function abrirModalFaltasPrevistas(){
+
+    const modal =
+        document.getElementById(
+            "modalFaltasPrevistas"
+        );
+
+    const tbody =
+        document.getElementById(
+            "tbodyFaltasPrevistas"
+        );
+
+    const tfoot =
+        document.getElementById(
+            "tfootFaltasPrevistas"
+        );
+
+
+    /* =========================================
+       PRÓXIMOS 4 MESES
+    ========================================= */
+
+    const mesesFuturos =
+        meses.slice(1, 5);
+
+
+    /* =========================================
+       TÍTULO
+    ========================================= */
+
+    document.getElementById(
+        "tituloFaltasPrevistas"
+    ).textContent =
+        mesesFuturos.join(" | ");
+
+
+    /* =========================================
+       PRODUTOS
+    ========================================= */
+
+    const faltas =
+        Array.isArray(rowData)
+            ? rowData
+
+                .filter(item => {
+
+                    if(
+                        item.tipo === "subtotal" ||
+                        item.tipo === "total"
+                    ){
+                        return false;
+                    }
+
+                    return true;
+
+                })
+
+                .map(item => {
+
+
+                    /* =================================
+                       PREÇO MÉDIO
+                    ================================= */
+
+                    let precoMedio =
+                        Number(
+                            item[
+                                `${mesAtual}_preco_medio`
+                            ] || 0
+                        );
+
+
+                    /* HISTÓRICO SE FOR ZERO */
+
+                    if(
+                        precoMedio <= 0
+                    ){
+
+                        precoMedio =
+                            obterPrecoMedioHistorico(
+                                item
+                            );
+
+                    }
+
+
+                    /* =================================
+                       CALCULAR OS 4 MESES
+                    ================================= */
+
+                    const mesesDados =
+                        mesesFuturos.map(mes => {
+
+                            const estoqueFinal =
+                                Number(
+                                    item[
+                                        `${mes}_est_final`
+                                    ] || 0
+                                );
+
+
+                            const qtdFalta =
+                                estoqueFinal < 0
+                                    ? Math.abs(
+                                        estoqueFinal
+                                    )
+                                    : 0;
+
+
+                            const valor =
+                                qtdFalta *
+                                precoMedio;
+
+
+                            return {
+
+                                mes,
+                                qtdFalta,
+                                valor
+
+                            };
+
+                        });
+
+
+                    /* =================================
+                       TOTAL
+                    ================================= */
+
+                    const valorTotal =
+                        mesesDados.reduce(
+                            (total, mes) =>
+                                total + mes.valor,
+                            0
+                        );
+
+
+                    return {
+
+                        ...item,
+                        precoMedio,
+                        mesesDados,
+                        valorTotal
+
+                    };
+
+                })
+
+                /* SOMENTE QUEM TEM ALGUMA FALTA */
+
+                .filter(item =>
+                    item.mesesDados.some(
+                        mes =>
+                            mes.qtdFalta > 0
+                    )
+                )
+
+                /* MAIOR VALOR PRIMEIRO */
+
+                .sort(
+                    (a, b) =>
+                        b.valorTotal -
+                        a.valorTotal
+                )
+
+            : [];
+
+
+    /* =========================================
+       SE NÃO EXISTIR FALTA
+    ========================================= */
+
+    if(
+        faltas.length === 0
+    ){
+
+        tbody.innerHTML = `
+
+            <tr>
+
+                <td
+                    colspan="13"
+                    style="
+                        padding:30px;
+                        text-align:center;
+                        color:#64748b;
+                    "
+                >
+                    Nenhuma falta prevista
+                    nos próximos 4 meses.
+                </td>
+
+            </tr>
+
+        `;
+
+        tfoot.innerHTML = "";
+
+        modal.style.display = "flex";
+
+        return;
+
+    }
+
+
+    /* =========================================
+       TOTAIS DOS MESES
+    ========================================= */
+
+    const totaisMes =
+        mesesFuturos.map(() => ({
+            qtd:0,
+            valor:0
+        }));
+
+
+    let valorTotalGeral = 0;
+
+
+    /* =========================================
+       LINHAS
+    ========================================= */
+
+    tbody.innerHTML =
+
+        faltas.map(item => {
+
+            valorTotalGeral +=
+                item.valorTotal;
+
+
+            item.mesesDados.forEach(
+                (mesItem, index) => {
+
+                    totaisMes[index].qtd +=
+                        mesItem.qtdFalta;
+
+                    totaisMes[index].valor +=
+                        mesItem.valor;
+
+                }
+            );
+
+
+            return `
+
+                <tr
+                    style="
+                        border-bottom:
+                            1px solid #e2e8f0;
+                    "
+                >
+
+                    <td
+                        style="
+                            padding:9px;
+                        "
+                    >
+                        ${item.codigo || ""}
+                    </td>
+
+
+                    <td
+                        style="
+                            padding:9px;
+                        "
+                    >
+                        ${item.tam || ""}
+                    </td>
+
+
+                    <td
+                        style="
+                            padding:9px;
+                        "
+                    >
+                        ${item.descricao || ""}
+                    </td>
+
+
+                    <td
+                        style="
+                            padding:9px;
+                            text-align:right;
+                        "
+                    >
+                        ${item.precoMedio.toLocaleString(
+                            "pt-BR",
+                            {
+                                minimumFractionDigits:2,
+                                maximumFractionDigits:2
+                            }
+                        )}
+                    </td>
+
+
+                    ${
+                        item.mesesDados.map(
+                            mesItem => `
+
+                                <td
+                                    style="
+                                        padding:9px;
+                                        text-align:right;
+                                        color:${
+                                            mesItem.qtdFalta > 0
+                                                ? "#b91c1c"
+                                                : "#64748b"
+                                        };
+                                        font-weight:${
+                                            mesItem.qtdFalta > 0
+                                                ? "600"
+                                                : "400"
+                                        };
+                                    "
+                                >
+                                    ${mesItem.qtdFalta.toLocaleString(
+                                        "pt-BR"
+                                    )}
+                                </td>
+
+
+                                <td
+                                    style="
+                                        padding:9px;
+                                        text-align:right;
+                                        font-weight:${
+                                            mesItem.valor > 0
+                                                ? "600"
+                                                : "400"
+                                        };
+                                    "
+                                >
+                                    ${mesItem.valor.toLocaleString(
+                                        "pt-BR",
+                                        {
+                                            minimumFractionDigits:2,
+                                            maximumFractionDigits:2
+                                        }
+                                    )}
+                                </td>
+
+                            `
+                        ).join("")
+                    }
+
+
+                    <td
+                        style="
+                            padding:9px;
+                            text-align:right;
+                            font-weight:700;
+                        "
+                    >
+                        ${item.valorTotal.toLocaleString(
+                            "pt-BR",
+                            {
+                                minimumFractionDigits:2,
+                                maximumFractionDigits:2
+                            }
+                        )}
+                    </td>
+
+                </tr>
+
+            `;
+
+        }).join("");
+
+
+    /* =========================================
+       RODAPÉ
+    ========================================= */
+
+    tfoot.innerHTML = `
+
+        <tr>
+
+            <td
+                colspan="4"
+                style="
+                    padding:10px;
+                    text-align:right;
+                    font-weight:700;
+                    border-top:2px solid #cbd5e1;
+                "
+            >
+                Total:
+            </td>
+
+
+            ${
+                totaisMes.map(
+                    mesTotal => `
+
+                        <td
+                            style="
+                                padding:10px;
+                                text-align:right;
+                                font-weight:700;
+                                border-top:
+                                    2px solid #cbd5e1;
+                            "
+                        >
+                            ${mesTotal.qtd.toLocaleString(
+                                "pt-BR"
+                            )}
+                        </td>
+
+
+                        <td
+                            style="
+                                padding:10px;
+                                text-align:right;
+                                font-weight:700;
+                                border-top:
+                                    2px solid #cbd5e1;
+                            "
+                        >
+                            ${mesTotal.valor.toLocaleString(
+                                "pt-BR",
+                                {
+                                    minimumFractionDigits:2,
+                                    maximumFractionDigits:2
+                                }
+                            )}
+                        </td>
+
+                    `
+                ).join("")
+            }
+
+
+            <td
+                style="
+                    padding:10px;
+                    text-align:right;
+                    font-weight:700;
+                    border-top:2px solid #cbd5e1;
+                "
+            >
+                ${valorTotalGeral.toLocaleString(
+                    "pt-BR",
+                    {
+                        minimumFractionDigits:2,
+                        maximumFractionDigits:2
+                    }
+                )}
+            </td>
+
+        </tr>
+
+    `;
+
+
+    /* =========================================
+       ABRIR
+    ========================================= */
+
+    modal.style.display = "flex";
+
+}
+
 function menuSOE(tipo){
 
-    document.getElementById("menuSOE").style.display = "none";
+    document.getElementById(
+        "menuSOE"
+    ).style.display = "none";
 
-    console.log("S&OE:", tipo);
+
+    console.log(
+        "S&OE:",
+        tipo
+    );
+
+
+    if(
+        tipo === "falta_atual"
+    ){
+
+        abrirModalFaltaAtual();
+
+    }
+
+
+    if(
+        tipo === "faltas_previstas"
+    ){
+
+        abrirModalFaltasPrevistas();
+
+    }
+
+
+    if(
+        tipo === "excessos"
+    ){
+
+        abrirModalExcessosPrevistos();
+
+    }
 
 }
 
@@ -2895,6 +5261,1964 @@ function toggleMenuConsolidacao(){
             : "block";
 
 }
+
+
+document.addEventListener("click", function(e){
+
+    const menu =
+        document.getElementById("menuConsolidacao");
+
+    if(
+        menu.style.display === "block" &&
+        !e.target.closest("#menuConsolidacao") &&
+        !e.target.closest(".menuDropdown button")
+    ){
+        menu.style.display = "none";
+    }
+
+});
+
+/* =====================================================
+   IMPORTAR DESCRIÇÕES DOS PRODUTOS
+===================================================== */
+
+async function importarProdutosExcel(){
+
+    try{
+
+        const input =
+            document.createElement("input");
+
+        input.type = "file";
+        input.accept = ".xlsx,.xls";
+
+        input.onchange = async function(){
+
+            const arquivo = input.files[0];
+
+            if(!arquivo){
+                return;
+            }
+
+            console.log(
+                "Arquivo selecionado:",
+                arquivo.name
+            );
+
+            /*
+               Electron permite enviar o caminho
+               real do arquivo para o processo principal
+            */
+
+            const resultado =
+            await window.api.lerProdutosExcel(
+                arquivo
+            );
+
+            console.log(
+                "Resultado leitura Excel:",
+                resultado
+            );
+
+            if(!resultado.sucesso){
+
+                mostrarAlerta(
+                    "Erro ao ler o Excel:\n" +
+                    resultado.erro
+                );
+
+                return;
+            }
+
+            /*
+               Salvar produtos no SQLite
+            */
+
+            const salvar =
+                await window.api.salvarProdutos(
+                    resultado.produtos
+                );
+
+            console.log(
+                "Resultado salvamento:",
+                salvar
+            );
+
+            if(!salvar.sucesso){
+
+            mostrarAlerta(
+                    "Erro ao salvar produtos:\n" +
+                    salvar.erro
+                );
+
+                return;
+            }
+
+        mostrarAlerta(
+                "Descrições importadas com sucesso!\n\n" +
+                "Produtos processados: " +
+                salvar.quantidade
+            );
+
+        };
+
+        input.click();
+
+    }
+    catch(erro){
+
+        console.error(
+            "Erro na importação:",
+            erro
+        );
+
+        mostrarAlerta(
+            "Erro ao importar o Excel:\n" +
+            erro.message
+        );
+
+    }
+
+}
+
+/* =====================================================
+   CONSULTA GERAL DE ORDENS DE COMPRA
+===================================================== */
+
+/* =====================================================
+   CONSULTA GERAL DE ORDENS DE COMPRA
+===================================================== */
+
+let ordensConsultaCompras = [];
+
+
+/* =====================================================
+   ABRIR CONSULTA
+===================================================== */
+
+function abrirConsultaCompras(){
+
+    const modal =
+        document.getElementById(
+            "modalConsultaCompras"
+        );
+
+    modal.style.display = "block";
+
+
+    /* NÃO CARREGA AS OCs AQUI */
+
+    document.getElementById(
+        "tbodyConsultaCompras"
+    ).innerHTML = `
+        <tr>
+            <td
+                colspan="15"
+                style="
+                    text-align:center;
+                    padding:25px;
+                    color:#64748b;
+                "
+            >
+                Informe os filtros e clique em 🔎 Buscar
+            </td>
+        </tr>
+    `;
+
+}
+
+
+/* =====================================================
+   FECHAR
+===================================================== */
+
+function fecharConsultaCompras(){
+
+    document.getElementById(
+        "modalConsultaCompras"
+    ).style.display = "none";
+
+}
+
+
+/* =====================================================
+   BUSCAR
+===================================================== */
+
+async function buscarConsultaCompras(){
+
+    const tbody =
+        document.getElementById(
+            "tbodyConsultaCompras"
+        );
+
+    tbody.innerHTML = `
+        <tr>
+            <td
+                colspan="15"
+                style="
+                    text-align:center;
+                    padding:25px;
+                "
+            >
+                🔄 Buscando...
+            </td>
+        </tr>
+    `;
+
+    try{
+
+        /* =========================================
+           ORIGEM
+        ========================================= */
+
+        if(cenarioSelecionado){
+
+                const origem =
+                    Array.isArray(comprasCenario)
+                        ? comprasCenario
+                        : [];
+
+                ordensConsultaCompras =
+                    origem.filter(o => {
+
+                        const etaVolk =
+                            o.etaVolk
+                                ? String(o.etaVolk).substring(0,10)
+                                : "";
+
+                        return etaVolk >= "2025-01-01";
+
+                    });
+
+            }
+            else{
+
+                const origem =
+                    Array.isArray(ordensCache)
+                        ? ordensCache
+                        : [];
+
+                ordensConsultaCompras =
+                    origem.filter(o => {
+
+                        const etaVolk =
+                            o.etaVolk
+                                ? String(o.etaVolk).substring(0,10)
+                                : "";
+
+                        return etaVolk >= "2025-01-01";
+
+                    });
+
+            }
+
+
+        /* =========================================
+           FILTROS
+        ========================================= */
+
+        const oc =
+            document.getElementById(
+                "filtroOC"
+            ).value
+            .trim()
+            .toLowerCase();
+
+
+        const embarque =
+            document.getElementById(
+                "filtroEmbarque"
+            ).value
+            .trim()
+            .toLowerCase();
+
+
+        const lote =
+            document.getElementById(
+                "filtroLote"
+            ).value
+            .trim()
+            .toLowerCase();
+
+
+        const produto =
+            document.getElementById(
+                "filtroProduto"
+            ).value
+            .trim()
+            .toLowerCase();
+
+
+        const fornecedor =
+            document.getElementById(
+                "filtroFornecedor"
+            ).value
+            .trim()
+            .toLowerCase();
+
+
+        const status =
+            document.getElementById(
+                "filtroStatus"
+            ).value
+            .trim()
+            .toLowerCase();
+
+
+        const dataInicial =
+            document.getElementById(
+                "filtroEtaVolkInicial"
+            ).value;
+
+
+        const dataFinal =
+            document.getElementById(
+                "filtroEtaVolkFinal"
+            ).value;
+
+
+        /* =========================================
+           VALIDAR FILTRO
+        ========================================= */
+
+        if(
+            !oc &&
+            !embarque &&
+            !lote &&
+            !produto &&
+            !fornecedor &&
+            !status &&
+            !dataInicial &&
+            !dataFinal
+        ){
+
+            mostrarAlerta(
+                "Informe pelo menos um filtro para realizar a busca."
+            );
+
+            tbody.innerHTML = `
+                <tr>
+                    <td
+                        colspan="15"
+                        style="
+                            text-align:center;
+                            padding:25px;
+                            color:#64748b;
+                        "
+                    >
+                        Informe pelo menos um filtro para realizar a busca.
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+
+        /* =========================================
+           FILTRAR
+        ========================================= */
+
+        const resultado =
+            ordensConsultaCompras.filter(o => {
+
+                const valorOC =
+                    String(
+                        o.numOcp || ""
+                    )
+                    .toLowerCase();
+
+
+                const valorEmbarque =
+                    String(
+                        o.via || ""
+                    )
+                    .toLowerCase();
+
+
+                const valorLote =
+                    String(
+                        o.codLot || ""
+                    )
+                    .toLowerCase();
+
+
+                const valorProduto =
+                    String(
+                        o.codPro || ""
+                    )
+                    .toLowerCase();
+
+
+                const valorDescricao =
+                    String(
+                        o.desPro || ""
+                    )
+                    .toLowerCase();
+
+
+                const valorFornecedor =
+                    String(
+                        o.fornecedor || ""
+                    )
+                    .toLowerCase();
+
+
+                const valorStatus =
+                    String(
+                        o.status || ""
+                    )
+                    .toLowerCase();
+
+
+                /* ==============================
+                   OC
+                ============================== */
+
+                if(
+                    oc &&
+                    !valorOC.includes(oc)
+                ){
+
+                    return false;
+
+                }
+
+
+                /* ==============================
+                   EMBARQUE
+                ============================== */
+
+                if(
+                    embarque &&
+                    !valorEmbarque.includes(embarque)
+                ){
+
+                    return false;
+
+                }
+
+
+                /* ==============================
+                   LOTE
+                ============================== */
+
+                if(
+                    lote &&
+                    !valorLote.includes(lote)
+                ){
+
+                    return false;
+
+                }
+
+
+                /* ==============================
+                   PRODUTO
+                ============================== */
+
+                if(
+                    produto &&
+                    !valorProduto.includes(produto) &&
+                    !valorDescricao.includes(produto)
+                ){
+
+                    return false;
+
+                }
+
+
+                /* ==============================
+                   FORNECEDOR
+                ============================== */
+
+                if(
+                    fornecedor &&
+                    !valorFornecedor.includes(fornecedor)
+                ){
+
+                    return false;
+
+                }
+
+
+                /* ==============================
+                   STATUS
+                ============================== */
+
+                if(
+                    status &&
+                    valorStatus !== status
+                ){
+
+                    return false;
+
+                }
+
+
+                /* ==============================
+                   ETA VOLK
+                ============================== */
+
+                const etaVolk =
+                    o.etaVolk
+                        ? String(
+                            o.etaVolk
+                        ).substring(0,10)
+                        : "";
+
+
+                /* DATA INICIAL */
+
+                if(
+                    dataInicial &&
+                    (
+                        !etaVolk ||
+                        etaVolk < dataInicial
+                    )
+                ){
+
+                    return false;
+
+                }
+
+
+                /* DATA FINAL */
+
+                if(
+                    dataFinal &&
+                    (
+                        !etaVolk ||
+                        etaVolk > dataFinal
+                    )
+                ){
+
+                    return false;
+
+                }
+
+
+                return true;
+
+            });
+
+
+        /* =========================================
+           MONTAR TABELA
+        ========================================= */
+
+        montarTabelaConsultaCompras(
+            resultado
+        );
+
+    }
+    catch(erro){
+
+        console.error(
+            "Erro na consulta:",
+            erro
+        );
+
+        tbody.innerHTML = `
+            <tr>
+                <td
+                    colspan="15"
+                    style="
+                        text-align:center;
+                        padding:25px;
+                        color:#b91c1c;
+                    "
+                >
+                    Erro ao buscar as Ordens de Compra.
+                </td>
+            </tr>
+        `;
+
+    }
+
+}
+
+/* =====================================================
+   MONTAR TABELA
+===================================================== */
+
+function montarTabelaConsultaCompras(ordens){
+
+    const tbody =
+        document.getElementById(
+            "tbodyConsultaCompras"
+        );
+
+
+    tbody.innerHTML = "";
+
+
+    if(ordens.length === 0){
+
+        tbody.innerHTML = `
+            <tr>
+                <td
+                    colspan="15"
+                    style="
+                        text-align:center;
+                        padding:25px;
+                        color:#64748b;
+                    "
+                >
+                    Nenhuma OC encontrada.
+                </td>
+            </tr>
+        `;
+
+        return;
+
+    }
+
+
+    const fragment =
+        document.createDocumentFragment();
+
+
+    ordens.forEach(o => {
+
+        const tr =
+            document.createElement("tr");
+
+
+        tr.innerHTML = `
+            <td>${o.numOcp || ""}</td>
+
+            <td>${o.codLot || ""}</td>
+
+            <td>${o.codPro || ""}</td>
+
+            <td>${o.codDer || ""}</td>
+
+            <td>${o.desPro || ""}</td>
+
+            <td>
+                ${Number(o.qtdIte || 0)
+                    .toLocaleString("pt-BR")}
+            </td>
+
+            <td>
+                ${Number(o.valorUnit || 0)
+                    .toLocaleString(
+                        "pt-BR",
+                        {
+                            minimumFractionDigits:2,
+                            maximumFractionDigits:4
+                        }
+                    )}
+            </td>
+
+            <td>
+                ${Number(o.valorTotal || 0)
+                    .toLocaleString(
+                        "pt-BR",
+                        {
+                            minimumFractionDigits:2,
+                            maximumFractionDigits:2
+                        }
+                    )}
+            </td>
+
+            <td>${o.via || ""}</td>
+
+            <td>${formatarDataConsulta(o.etd)}</td>
+
+            <td>${formatarDataConsulta(o.eta)}</td>
+
+            <td>${formatarDataConsulta(o.etaVolk)}</td>
+
+            <td>${o.fornecedor || ""}</td>
+
+            <td>${o.status || ""}</td>
+
+            <td>${o.importador || ""}</td>
+        `;
+
+
+        fragment.appendChild(tr);
+
+    });
+
+
+    tbody.appendChild(fragment);
+
+
+    console.log(
+        "Ocs encontradas:",
+        ordens.length
+    );
+
+}
+
+
+/* =====================================================
+   FORMATAR DATA
+===================================================== */
+
+function formatarDataConsulta(data){
+
+    if(!data){
+        return "";
+    }
+
+
+    const texto =
+        String(data).substring(0,10);
+
+
+    const partes =
+        texto.split("-");
+
+
+    if(partes.length !== 3){
+        return data;
+    }
+
+
+    return (
+        partes[2] +
+        "/" +
+        partes[1] +
+        "/" +
+        partes[0]
+    );
+
+}
+
+
+/* =====================================================
+   LIMPAR
+===================================================== */
+
+function limparFiltrosCompras(){
+
+    document.getElementById(
+        "filtroOC"
+    ).value = "";
+
+    document.getElementById(
+        "filtroEmbarque"
+    ).value = "";
+
+    document.getElementById(
+        "filtroLote"
+    ).value = "";
+
+    document.getElementById(
+        "filtroProduto"
+    ).value = "";
+
+    document.getElementById(
+        "filtroEtaVolkInicial"
+    ).value = "";
+
+    document.getElementById(
+        "filtroEtaVolkFinal"
+    ).value = "";
+
+
+    document.getElementById(
+        "tbodyConsultaCompras"
+    ).innerHTML = `
+        <tr>
+            <td
+                colspan="15"
+                style="
+                    text-align:center;
+                    padding:25px;
+                    color:#64748b;
+                "
+            >
+                Informe os filtros e clique em 🔎 Buscar
+            </td>
+        </tr>
+    `;
+
+}
+
+
+function abrirModalFaltaAtual(){
+
+    const modal =
+        document.getElementById(
+            "modalFaltaAtual"
+        );
+
+    const tbody =
+        document.getElementById(
+            "tbodyFaltaAtual"
+        );
+
+    const tfoot =
+        document.getElementById(
+            "tfootFaltaAtual"
+        );
+
+    /* =========================================
+       MÊS ATUAL
+    ========================================= */
+
+    const mes =
+        typeof mesAtual !== "undefined"
+            ? mesAtual
+            : "";
+
+    document.getElementById(
+        "tituloMesFaltaAtual"
+    ).textContent =
+        mes
+            ? `Mês: ${mes}`
+            : "";
+
+    /* =========================================
+       FILTRAR PRODUTOS COM ESTOQUE NEGATIVO
+       E CALCULAR IMPACTO FINANCEIRO
+    ========================================= */
+
+    const faltas =
+        Array.isArray(rowData)
+            ? rowData
+                .filter(item => {
+
+                    if(
+                        item.tipo === "subtotal" ||
+                        item.tipo === "total"
+                    ){
+                        return false;
+                    }
+
+                    return Number(
+                        item.Est_Final || 0
+                    ) < 0;
+
+                })
+                .map(item => {
+
+                    const qtdFalta =
+                        Math.abs(
+                            Number(
+                                item.Est_Final || 0
+                            )
+                        );
+
+                   let precoMedio =
+                        Number(
+                            item[
+                                `${mesAtual}_preco_medio`
+                            ] || 0
+                        );
+
+                    /* Se o mês atual não tiver preço,
+                    usar o último preço histórico disponível */
+
+                    if(precoMedio <= 0){
+
+                        precoMedio =
+                            obterPrecoMedioHistorico(item);
+
+                    }
+
+                    const valorTotal =
+                        qtdFalta *
+                        precoMedio;
+
+                    return {
+                        ...item,
+                        qtdFalta,
+                        precoMedio,
+                        valorTotal
+                    };
+
+                })
+
+                /* =====================================
+                   MAIOR IMPACTO → MENOR IMPACTO
+                ===================================== */
+
+                .sort(
+                    (a, b) =>
+                        b.valorTotal -
+                        a.valorTotal
+                )
+
+            : [];
+
+    /* =========================================
+       TABELA VAZIA
+    ========================================= */
+
+    if(
+        faltas.length === 0
+    ){
+
+        tbody.innerHTML = `
+            <tr>
+
+                <td
+                    colspan="6"
+                    style="
+                        padding:30px;
+                        text-align:center;
+                        color:#64748b;
+                    "
+                >
+                    Nenhuma falta identificada no mês atual.
+                </td>
+
+            </tr>
+        `;
+
+        tfoot.innerHTML = "";
+
+        modal.style.display = "flex";
+
+        return;
+    }
+
+    /* =========================================
+       MONTAR TABELA
+    ========================================= */
+
+    let valorTotalGeral = 0;
+
+    tbody.innerHTML =
+        faltas.map(item => {
+
+            const qtdFalta =
+                item.qtdFalta;
+
+            const precoMedio =
+                item.precoMedio;
+
+            const valorTotal =
+                item.valorTotal;
+
+            valorTotalGeral +=
+                valorTotal;
+
+            return `
+                <tr
+                    style="
+                        border-bottom:1px solid #e2e8f0;
+                    "
+                >
+
+                    <!-- CÓDIGO -->
+
+                    <td
+                        style="
+                            padding:9px;
+                        "
+                    >
+                        ${item.codigo || ""}
+                    </td>
+
+
+                    <!-- DERIVAÇÃO -->
+
+                    <td
+                        style="
+                            padding:9px;
+                        "
+                    >
+                        ${item.tam || ""}
+                    </td>
+
+
+                    <!-- DESCRIÇÃO -->
+
+                    <td
+                        style="
+                            padding:9px;
+                        "
+                    >
+                        ${item.descricao || ""}
+                    </td>
+
+
+                    <!-- QTD FALTA -->
+
+                    <td
+                        style="
+                            padding:9px;
+                            text-align:right;
+                            color:#b91c1c;
+                            font-weight:600;
+                        "
+                    >
+                        ${qtdFalta.toLocaleString(
+                            "pt-BR"
+                        )}
+                    </td>
+
+
+                    <!-- PREÇO MÉDIO -->
+
+                    <td
+                        style="
+                            padding:9px;
+                            text-align:right;
+                        "
+                    >
+                        ${precoMedio.toLocaleString(
+                            "pt-BR",
+                            {
+                                minimumFractionDigits:2,
+                                maximumFractionDigits:2
+                            }
+                        )}
+                    </td>
+
+
+                    <!-- VALOR TOTAL -->
+
+                    <td
+                        style="
+                            padding:9px;
+                            text-align:right;
+                            font-weight:700;
+                        "
+                    >
+                        ${valorTotal.toLocaleString(
+                            "pt-BR",
+                            {
+                                minimumFractionDigits:2,
+                                maximumFractionDigits:2
+                            }
+                        )}
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+
+
+    /* =========================================
+       TOTAL
+    ========================================= */
+
+    tfoot.innerHTML = `
+        <tr>
+
+            <td
+                colspan="5"
+                style="
+                    padding:10px;
+                    text-align:right;
+                    font-weight:700;
+                    border-top:2px solid #cbd5e1;
+                "
+            >
+                Total:
+            </td>
+
+            <td
+                style="
+                    padding:10px;
+                    text-align:right;
+                    font-weight:700;
+                    border-top:2px solid #cbd5e1;
+                "
+            >
+                ${valorTotalGeral.toLocaleString(
+                    "pt-BR",
+                    {
+                        minimumFractionDigits:2,
+                        maximumFractionDigits:2
+                    }
+                )}
+            </td>
+
+        </tr>
+    `;
+
+
+    /* =========================================
+       ABRIR MODAL
+    ========================================= */
+
+    modal.style.display = "flex";
+
+}
+
+function fecharModalFaltaAtual(){
+
+    document.getElementById(
+        "modalFaltaAtual"
+    ).style.display = "none";
+
+}
+
+function obterPrecoMedioHistorico(item){
+
+    for(
+        let i = mesesPassados.length - 1;
+        i >= 0;
+        i--
+    ){
+
+        const mes =
+            mesesPassados[i];
+
+        const preco =
+            Number(
+                item[
+                    `${mes}_preco_medio`
+                ] || 0
+            );
+
+        if(preco > 0){
+
+            return preco;
+
+        }
+
+    }
+
+    return 0;
+}
+
+
+window.fecharModalFaltasPrevistas = function(){
+
+    const modal =
+        document.getElementById(
+            "modalFaltasPrevistas"
+        );
+
+    if(modal){
+        modal.style.display = "none";
+    }
+};
+
+window.maximizarFaltasPrevistas = function(){
+
+    const conteudo =
+        document.getElementById(
+            "conteudoModalFaltasPrevistas"
+        );
+
+    if(!conteudo){
+        return;
+    }
+
+    const maximizado =
+        conteudo.dataset.maximizado === "true";
+
+    if(!maximizado){
+
+        conteudo.style.width = "100vw";
+        conteudo.style.maxWidth = "100vw";
+
+        conteudo.style.height = "100vh";
+        conteudo.style.maxHeight = "100vh";
+
+        conteudo.style.borderRadius = "0";
+
+        conteudo.dataset.maximizado = "true";
+
+    }else{
+
+        conteudo.style.width = "1200px";
+        conteudo.style.maxWidth = "96%";
+
+        conteudo.style.height = "85vh";
+        conteudo.style.maxHeight = "85vh";
+
+        conteudo.style.borderRadius = "12px";
+
+        conteudo.dataset.maximizado = "false";
+    }
+};
+
+/* =====================================================
+   EXCESSOS PREVISTOS
+   MÊS ATUAL + 6 MESES
+===================================================== */
+
+window.abrirModalExcessosPrevistos = function(){
+
+    const modal =
+        document.getElementById(
+            "modalExcessosPrevistos"
+        );
+
+    const tbody =
+        document.getElementById(
+            "tbodyExcessosPrevistos"
+        );
+
+    const tfoot =
+        document.getElementById(
+            "tfootExcessosPrevistos"
+        );
+
+    if(!modal || !tbody || !tfoot){
+        console.error(
+            "Modal de excessos não encontrado."
+        );
+        return;
+    }
+
+
+    /* =========================================
+       7 MESES
+       MÊS ATUAL + 6 FUTUROS
+    ========================================= */
+
+    const mesesExcesso =
+        meses.slice(0,7);
+
+
+    /* =========================================
+       TÍTULO
+    ========================================= */
+
+    document.getElementById(
+        "tituloExcessosPrevistos"
+    ).textContent =
+        mesesExcesso.join(" | ");
+
+
+    /* =========================================
+       CALCULAR EXCESSOS
+    ========================================= */
+
+    const excessos =
+
+        Array.isArray(rowData)
+
+        ?
+
+        rowData
+
+        .filter(item => {
+
+            if(
+                item.tipo === "subtotal" ||
+                item.tipo === "total"
+            ){
+                return false;
+            }
+
+            return true;
+
+        })
+
+        .map(item => {
+
+            const dadosMeses =
+                mesesExcesso.map(
+                    (mes,index) => {
+
+                        let estoqueFinal = 0;
+                        let media = 0;
+                        let cmeFinal = 0;
+
+
+                        /* =================================
+                           MÊS ATUAL
+                        ================================= */
+
+                        if(index === 0){
+
+                            estoqueFinal =
+                                Number(
+                                    item.Est_Final || 0
+                                );
+
+                            media =
+                                Number(
+                                    item.media_3m || 0
+                                );
+
+                            cmeFinal =
+                                Number(
+                                    item.cme_final || 0
+                                );
+
+                        }
+
+
+                        /* =================================
+                           MESES FUTUROS
+                        ================================= */
+
+                      
+                            else{
+
+                                /* ESTOQUE FINAL DO MÊS */
+
+                                estoqueFinal =
+                                    Number(
+                                        item[
+                                            `${mes}_est_final`
+                                        ] || 0
+                                    );
+
+
+                                /* MÉDIA 3M DO PRODUTO */
+
+                                media =
+                                    Number(
+                                        item.media_3m || 0
+                                    );
+
+
+                                /* CME FINAL DO MÊS */
+
+                                cmeFinal =
+                                    Number(
+                                        item[
+                                            `${mes}_cf_cme_final`
+                                        ] || 0
+                                    );
+
+                            }
+
+                        /* =================================
+                           COBERTURA DE 12 SEMANAS
+
+                           12 semanas ≈ 3 meses
+                        ================================= */
+
+                        const estoque12Semanas =
+                            media * 2.76;
+
+
+                        /* =================================
+                           EXCESSO
+                        ================================= */
+
+                        const excesso =
+                            Math.max(
+                                0,
+                                estoqueFinal -
+                                estoque12Semanas
+                            );
+
+
+                        /* =================================
+                           VALOR DO EXCESSO
+                        ================================= */
+
+                        const valor =
+                            excesso *
+                            cmeFinal;
+
+
+                        return {
+
+                            mes,
+                            estoqueFinal,
+                            media,
+                            cmeFinal,
+                            excesso,
+                            valor
+
+                        };
+
+                    }
+                );
+
+
+            /* =====================================
+               SOMENTE PRODUTOS COM EXCESSO
+            ===================================== */
+
+            const possuiExcesso =
+                dadosMeses.some(
+                    item =>
+                        item.excesso > 0
+                );
+
+
+            if(!possuiExcesso){
+                return null;
+            }
+
+
+            /* =====================================
+               TOTAL DO PRODUTO
+            ===================================== */
+
+            const valorTotal =
+                dadosMeses.reduce(
+                    (total,item) =>
+                        total + item.valor,
+                    0
+                );
+
+
+            return {
+
+                ...item,
+
+                dadosMeses,
+
+                valorTotal
+
+            };
+
+        })
+
+        .filter(
+            item => item !== null
+        )
+
+        /* MAIOR VALOR PRIMEIRO */
+
+        .sort(
+            (a,b) =>
+                b.valorTotal -
+                a.valorTotal
+        )
+
+        :
+
+        [];
+
+
+    /* =========================================
+       NENHUM EXCESSO
+    ========================================= */
+
+    if(excessos.length === 0){
+
+        tbody.innerHTML = `
+
+            <tr>
+
+                <td
+                    colspan="11"
+                    style="
+                        padding:30px;
+                        text-align:center;
+                        color:#64748b;
+                    "
+                >
+                    Nenhum excesso previsto
+                    nos próximos 7 meses.
+                </td>
+
+            </tr>
+
+        `;
+
+        tfoot.innerHTML = "";
+
+        modal.style.display = "flex";
+
+        return;
+
+    }
+
+
+    /* =========================================
+       TOTAIS
+    ========================================= */
+
+    const totaisMes =
+        mesesExcesso.map(
+            () => 0
+        );
+
+    let totalGeral = 0;
+
+
+    /* =========================================
+       MONTAR LINHAS
+    ========================================= */
+
+    tbody.innerHTML =
+
+        excessos.map(item => {
+
+            totalGeral +=
+                item.valorTotal;
+
+
+            item.dadosMeses.forEach(
+                (mesItem,index) => {
+
+                    totaisMes[index] +=
+                        mesItem.valor;
+
+                }
+            );
+
+
+            return `
+
+                <tr
+                    style="
+                        border-bottom:
+                        1px solid #e2e8f0;
+                    "
+                >
+
+                    <td
+                        style="
+                            padding:10px;
+                            white-space:nowrap;
+                        "
+                    >
+                        ${item.codigo || ""}
+                    </td>
+
+
+                    <td
+                        style="
+                            padding:10px;
+                            white-space:nowrap;
+                        "
+                    >
+                        ${item.tam || ""}
+                    </td>
+
+
+                    <td
+                        style="
+                            padding:10px;
+                            min-width:220px;
+                        "
+                    >
+                        ${item.descricao || ""}
+                    </td>
+
+
+                    ${
+                        item.dadosMeses.map(
+                            (mesItem,index) => `
+
+                                <td
+                                    style="
+                                        padding:10px;
+                                        text-align:right;
+
+                                        border-left:
+                                        ${
+                                            index > 0
+                                            ? "2px solid #e2e8f0"
+                                            : "none"
+                                        };
+
+                                        background:
+                                        ${
+                                            mesItem.valor > 0
+                                            ? "#fff7ed"
+                                            : "#ffffff"
+                                        };
+
+                                        color:
+                                        ${
+                                            mesItem.valor > 0
+                                            ? "#9a3412"
+                                            : "#64748b"
+                                        };
+
+                                        font-weight:
+                                        ${
+                                            mesItem.valor > 0
+                                            ? "600"
+                                            : "400"
+                                        };
+                                    "
+                                >
+
+                                    ${
+                                        mesItem.valor.toLocaleString(
+                                            "pt-BR",
+                                            {
+                                                minimumFractionDigits:2,
+                                                maximumFractionDigits:2
+                                            }
+                                        )
+                                    }
+
+                                </td>
+
+                            `
+                        ).join("")
+                    }
+
+
+                    <td
+                        style="
+                            padding:10px;
+                            text-align:right;
+                            font-weight:700;
+                            border-left:
+                            3px solid #94a3b8;
+                            background:#f1f5f9;
+                        "
+                    >
+
+                        ${
+                            item.valorTotal.toLocaleString(
+                                "pt-BR",
+                                {
+                                    minimumFractionDigits:2,
+                                    maximumFractionDigits:2
+                                }
+                            )
+                        }
+
+                    </td>
+
+                </tr>
+
+            `;
+
+        }).join("");
+
+
+    /* =========================================
+       RODAPÉ
+    ========================================= */
+
+    tfoot.innerHTML = `
+
+        <tr>
+
+            <td
+                colspan="3"
+                style="
+                    padding:11px;
+                    text-align:right;
+                    font-weight:700;
+                    border-top:
+                    2px solid #cbd5e1;
+                "
+            >
+                Total:
+            </td>
+
+
+            ${
+                totaisMes.map(
+                    (valor,index) => `
+
+                        <td
+                            style="
+                                padding:11px;
+                                text-align:right;
+                                font-weight:700;
+                                border-top:
+                                2px solid #cbd5e1;
+
+                                border-left:
+                                ${
+                                    index > 0
+                                    ? "2px solid #e2e8f0"
+                                    : "none"
+                                };
+
+                                background:#f8fafc;
+                            "
+                        >
+
+                            ${
+                                valor.toLocaleString(
+                                    "pt-BR",
+                                    {
+                                        minimumFractionDigits:2,
+                                        maximumFractionDigits:2
+                                    }
+                                )
+                            }
+
+                        </td>
+
+                    `
+                ).join("")
+            }
+
+
+            <td
+                style="
+                    padding:11px;
+                    text-align:right;
+                    font-weight:700;
+                    border-top:
+                    2px solid #94a3b8;
+                    border-left:
+                    3px solid #94a3b8;
+                    background:#e2e8f0;
+                "
+            >
+
+                ${
+                    totalGeral.toLocaleString(
+                        "pt-BR",
+                        {
+                            minimumFractionDigits:2,
+                            maximumFractionDigits:2
+                        }
+                    )
+                }
+
+            </td>
+
+        </tr>
+
+    `;
+
+
+    /* =========================================
+       ABRIR
+    ========================================= */
+
+    modal.style.display = "flex";
+
+};
+
+
+
+/* =====================================================
+   MAXIMIZAR / RESTAURAR
+===================================================== */
+
+window.maximizarExcessosPrevistos = function(){
+
+    const conteudo =
+        document.getElementById(
+            "conteudoModalExcessosPrevistos"
+        );
+
+    const botao =
+        document.getElementById(
+            "btnMaximizarExcessos"
+        );
+
+    if(!conteudo){
+        return;
+    }
+
+
+    const maximizado =
+        conteudo.dataset.maximizado === "true";
+
+
+    if(!maximizado){
+
+        conteudo.style.width = "100vw";
+        conteudo.style.maxWidth = "100vw";
+
+        conteudo.style.height = "100vh";
+        conteudo.style.maxHeight = "100vh";
+
+        conteudo.style.borderRadius = "0";
+
+        conteudo.dataset.maximizado = "true";
+
+
+        if(botao){
+
+            botao.innerHTML = "↙";
+
+            botao.title =
+                "Restaurar tamanho";
+
+        }
+
+    }
+
+    else{
+
+        conteudo.style.width = "1200px";
+        conteudo.style.maxWidth = "96%";
+
+        conteudo.style.height = "85vh";
+        conteudo.style.maxHeight = "85vh";
+
+        conteudo.style.borderRadius = "12px";
+
+        conteudo.dataset.maximizado = "false";
+
+
+        if(botao){
+
+            botao.innerHTML = "⛶";
+
+            botao.title =
+                "Maximizar";
+
+        }
+
+    }
+
+};
+
+
+
+/* =====================================================
+   FECHAR
+===================================================== */
+
+window.fecharModalExcessosPrevistos = function(){
+
+    const modal =
+        document.getElementById(
+            "modalExcessosPrevistos"
+        );
+
+    if(!modal){
+        return;
+    }
+
+
+    modal.style.display = "none";
+
+
+    /* VOLTAR PARA TAMANHO NORMAL */
+
+    const conteudo =
+        document.getElementById(
+            "conteudoModalExcessosPrevistos"
+        );
+
+
+    if(conteudo){
+
+        conteudo.style.width = "1200px";
+        conteudo.style.maxWidth = "96%";
+
+        conteudo.style.height = "85vh";
+        conteudo.style.maxHeight = "85vh";
+
+        conteudo.style.borderRadius = "12px";
+
+        conteudo.dataset.maximizado = "false";
+
+    }
+
+
+    const botao =
+        document.getElementById(
+            "btnMaximizarExcessos"
+        );
+
+
+    if(botao){
+
+        botao.innerHTML = "⛶";
+
+        botao.title =
+            "Maximizar";
+
+    }
+
+};
+
+function mostrarAlerta(mensagem){
+
+    const alerta = document.createElement("div");
+
+    alerta.textContent = mensagem;
+
+    alerta.style.position = "fixed";
+    alerta.style.top = "30px";
+    alerta.style.left = "50%";
+    alerta.style.transform = "translateX(-50%)";
+    alerta.style.background = "#ffffff";
+    alerta.style.padding = "15px 25px";
+    alerta.style.borderRadius = "10px";
+    alerta.style.boxShadow = "0 4px 20px rgba(0,0,0,0.2)";
+    alerta.style.zIndex = "99999";
+    alerta.style.fontWeight = "600";
+    alerta.style.fontSize = "15px";
+
+    document.body.appendChild(alerta);
+
+    setTimeout(() => {
+        alerta.remove();
+    }, 2500);
+}
+
+function mostrarConfirmacao(mensagem){
+
+    return new Promise(resolve => {
+
+        const fundo = document.createElement("div");
+
+        fundo.style.position = "fixed";
+        fundo.style.top = "0";
+        fundo.style.left = "0";
+        fundo.style.width = "100%";
+        fundo.style.height = "100%";
+        fundo.style.background = "rgba(0,0,0,0.35)";
+        fundo.style.display = "flex";
+        fundo.style.alignItems = "center";
+        fundo.style.justifyContent = "center";
+        fundo.style.zIndex = "99999";
+
+        const caixa = document.createElement("div");
+
+        caixa.style.background = "#ffffff";
+        caixa.style.padding = "25px";
+        caixa.style.borderRadius = "12px";
+        caixa.style.width = "420px";
+        caixa.style.boxShadow = "0 10px 30px rgba(0,0,0,0.25)";
+        caixa.style.textAlign = "center";
+
+        const texto = document.createElement("div");
+
+        texto.textContent = mensagem;
+        texto.style.whiteSpace = "pre-line";
+        texto.style.fontSize = "16px";
+        texto.style.marginBottom = "25px";
+
+        const botoes = document.createElement("div");
+
+        botoes.style.display = "flex";
+        botoes.style.justifyContent = "center";
+        botoes.style.gap = "10px";
+
+        const cancelar = document.createElement("button");
+
+        cancelar.textContent = "Cancelar";
+
+        cancelar.onclick = () => {
+            fundo.remove();
+            resolve(false);
+        };
+
+        const confirmar = document.createElement("button");
+
+        confirmar.textContent = "OK";
+
+        confirmar.onclick = () => {
+            fundo.remove();
+            resolve(true);
+        };
+
+        botoes.appendChild(cancelar);
+        botoes.appendChild(confirmar);
+
+        caixa.appendChild(texto);
+        caixa.appendChild(botoes);
+
+        fundo.appendChild(caixa);
+
+        document.body.appendChild(fundo);
+
+    });
+
+}
+
+
+
+
+
+
+
 
 </script>  
 

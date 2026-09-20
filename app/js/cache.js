@@ -12,6 +12,21 @@ function buscarCacheHoje() {
 
 }
 
+
+function excluirCacheHoje() {
+
+    const hoje =
+        new Date()
+            .toISOString()
+            .slice(0,10);
+
+    db.prepare(`
+        DELETE FROM cache_dia
+        WHERE data_cache = ?
+    `).run(hoje);
+
+}
+
 function salvarCacheHoje(rowData, ordens) {
 
     const hoje = new Date().toISOString().slice(0,10);
@@ -45,6 +60,8 @@ module.exports = {
 
     buscarCacheHoje,
 
-    salvarCacheHoje
+    salvarCacheHoje,
+
+    excluirCacheHoje
 
 };

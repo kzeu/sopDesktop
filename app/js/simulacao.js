@@ -29,6 +29,7 @@ async function simularMes(mes){
 
         // NÃO PRECISAMOS PERCORRER A GRID NOVAMENTE
         dadosOriginais.push(item);
+        
 
         const mFor =
             item[`${mes}_m_for`] || 0;
@@ -42,8 +43,6 @@ async function simularMes(mes){
         /* já possui cobertura */
 
         if(mFor >= nivel){
-
-            item[`${mes}_Qtd_Simu`] = 0;
 
             return;
 
@@ -121,36 +120,37 @@ async function simularMes(mes){
             item[
                 `${mes}_est_final`
             ] || 0;
+                const qtdSimu =
+                    estoqueDesejado
+                    -
+                    estoqueFinal;
 
-        const qtdSimu =
-            estoqueDesejado
-            -
-            estoqueFinal;
+                const necessidadeSimu =
+                    qtdSimu > 0
+                    ?
+                    Math.ceil(qtdSimu)
+                    :
+                    0;
 
-        item[
-            `${mes}_Qtd_Simu`
-        ] =
+                item[
+                    `${mes}_Qtd_Simu`
+                ] =
+                    (item[`${mes}_Qtd_Simu`] || 0)
+                    +
+                    necessidadeSimu;
 
-            qtdSimu > 0
+                if(necessidadeSimu > 0){
+                    itensAlterados++;
+                }
 
-            ?
+                /* recalcula toda cadeia futura */
 
-            Math.ceil(qtdSimu)
+                recalcularSimulacao(
+                    item,
+                    mes
+                );
 
-            :
-
-            0;
-
-        /* recalcula toda cadeia futura */
-
-       recalcularSimulacao(
-            item,
-            mes
-        );
-
-        itensAlterados++;
-
-    });
+            });
 
 
 
@@ -168,7 +168,7 @@ async function simularMes(mes){
      "rowData",
          novo
      );
-    alert(
+    mostrarAlerta(
         `Simulação do mês ${mes} concluída.\nItens processados: ${itensAlterados}`
     );
 
@@ -841,23 +841,26 @@ const media3m = item.media_3m || 0;
             :
             0
 
-        item[mForKey]
+            /* =====================================
+   M FOR
+===================================== */
 
-            mediaForecast > 0
 
-            ?
 
-            Number(
-                (
-                    item[
-                        `${mes}_est_final`
-                    ]
-                    /
-                    mediaForecast
-                ).toFixed(1)
-            )
+const mForCalculado =
+    mediaForecast > 0
+    ?
+    Number(
+        (
+            item[estFinalKey]
+            /
+            mediaForecast
+        ).toFixed(1)
+    )
+    :
+    0;
 
-            : 0
+            item[mForKey] = mForCalculado;
 
         /* =====================================
            CF QTD DISP
@@ -1224,7 +1227,8 @@ console.log(comprasCenario);
 
 if (comprasCenario.length === 0) {
 
-    comprasCenario = await window.api.buscarOrdens();
+    comprasCenario =
+        await window.api.buscarOrdens();
 
 }
    
@@ -1290,7 +1294,7 @@ if (comprasCenario.length === 0) {
 
             fecharModalCenarios();
 
-            alert("Cenário criado com sucesso!");
+            mostrarAlerta("✅ Cenário criado com sucesso!");
 
         } else {
 
@@ -1303,7 +1307,7 @@ if (comprasCenario.length === 0) {
             cenarioSelecionado.nome = dados.nome;
             cenarioSelecionado.descricao = dados.descricao;
 
-            alert("Cenário atualizado com sucesso!");
+            mostrarAlerta("✅ Cenário atualizado com sucesso!");
 
         }
 
@@ -1311,7 +1315,7 @@ if (comprasCenario.length === 0) {
 
     } catch (erro) {
 
-        alert("Erro ao salvar cenário:\n\n" + erro.message);
+        mostrarAlerta("Erro ao salvar cenário:\n\n" + erro.message);
 
     }
 

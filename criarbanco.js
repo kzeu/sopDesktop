@@ -46,6 +46,21 @@ CREATE TABLE IF NOT EXISTS ordens_compra(
     simulado INTEGER DEFAULT 0
 
 );
+
+
+CREATE TABLE IF NOT EXISTS produtos(
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    produto TEXT NOT NULL UNIQUE,
+
+    descricao TEXT,
+
+    data_alteracao DATETIME DEFAULT CURRENT_TIMESTAMP
+
+);
+
+
 `);
 
 console.log("Banco criado.");

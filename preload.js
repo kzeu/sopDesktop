@@ -1,4 +1,8 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const {
+    contextBridge,
+    ipcRenderer,
+    webUtils
+} = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
 
@@ -102,5 +106,41 @@ salvarDatasOC: (cenarioId,dados) =>
 
     ),
 
+    excluirCacheHoje: () =>
+    ipcRenderer.invoke(
+        "excluirCacheHoje"
+    ),
+
+
+   lerProdutosExcel: (arquivo) => {
+
+        const caminhoArquivo =
+            webUtils.getPathForFile(arquivo);
+
+        return ipcRenderer.invoke(
+            "lerProdutosExcel",
+            caminhoArquivo
+        );
+
+    },
+
+salvarProdutos: (produtos) =>
+    ipcRenderer.invoke(
+        "salvarProdutos",
+        produtos
+    ),
+
+        buscarProdutos: () =>
+        ipcRenderer.invoke(
+            "buscarProdutos"
+        ),
+
+        exportarXlsx: (dados) =>
+    ipcRenderer.invoke(
+        "exportarXlsx",
+        dados
+    ),
+
+   
 });
 

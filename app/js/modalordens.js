@@ -90,6 +90,17 @@ const codigos =
 
     itensOrdensModal = ordens;
 
+
+    console.log("===== DEBUG ORDENS CENÁRIO =====");
+console.log("Cenário:", cenarioSelecionado);
+console.log("Total comprasCenario:", comprasCenario.length);
+console.log("Código principal:", codigoPrincipal);
+console.log("Códigos:", codigos);
+console.log("Mês banco:", mesBanco);
+console.log("Ordens encontradas:", ordens.length);
+console.log("Compras do cenário:", comprasCenario);
+console.log("================================");
+
     let total = 0;
     
 
@@ -124,6 +135,8 @@ document.getElementById("totalProduto").innerHTML =
 
     document.getElementById("modalordens").style.display = "block";
 
+   
+
   
 
 }
@@ -139,9 +152,6 @@ modalAberto = false;
 
 function montarOrdens(ordens){
 
-
-
-
     const conteudo =
         document.getElementById("conteudoOrdens");
 
@@ -149,7 +159,8 @@ function montarOrdens(ordens){
 
     let ocAtual = "";
 
-    ordens.forEach(o=>{
+
+    ordens.forEach(o => {
 
         if(o.numOcp != ocAtual){
 
@@ -159,66 +170,69 @@ function montarOrdens(ordens){
 
         <div class="cardOC">
 
-<div class="cabecalhoOC">
+            <div class="cabecalhoOC">
 
-<div>
+                <div>
 
-<b>
+                    <b>
+                        OC ${o.numOcp}
+                    </b>
 
-OC ${o.numOcp}
+                    &nbsp;&nbsp;
 
-</b>
-
-&nbsp;&nbsp;
-
-Lote ${o.codLot}
-
-</div>
-
-<div>
-
-${o.fornecedor}
-
-</div>
-
-</div>
-
-          <div class="datasOC">
-
-                <label>
-
-                ETD
-
-                <input
-                type="date"
-                id="etd_${o.numOcp}"
-                value="${formatarDataInput(o.etd)}">
-
-                </label>
-
-                <label>
-
-                ETA
-
-                <input
-                type="date"
-                id="eta_${o.numOcp}"
-                value="${formatarDataInput(o.eta)}">
-
-                </label>
-
-                <label>
-
-                ETA Volk
-
-                <input
-                type="date"
-                id="etaVolk_${o.numOcp}"
-                value="${formatarDataInput(o.etaVolk)}">
-
-                </label>
+                    Lote ${o.codLot}
 
                 </div>
+
+                <div>
+                    ${o.fornecedor}
+                </div>
+
+            </div>
+
+
+            <div class="datasOC">
+
+                <label>
+
+                    ETD
+
+                    <input
+                        type="date"
+                        id="etd_${o.numOcp}"
+                        value="${formatarDataInput(o.etd)}"
+                    >
+
+                </label>
+
+
+                <label>
+
+                    ETA
+
+                    <input
+                        type="date"
+                        id="eta_${o.numOcp}"
+                        value="${formatarDataInput(o.eta)}"
+                    >
+
+                </label>
+
+
+                <label>
+
+                    ETA Volk
+
+                    <input
+                        type="date"
+                        id="etaVolk_${o.numOcp}"
+                        value="${formatarDataInput(o.etaVolk)}"
+                    >
+
+                </label>
+
+            </div>
+
 
             <table class="tabelaItens">
 
@@ -238,6 +252,7 @@ ${o.fornecedor}
 
                 </thead>
 
+
                 <tbody id="itens_${o.numOcp}">
 
                 </tbody>
@@ -246,25 +261,81 @@ ${o.fornecedor}
 
             <br>
 
-            `;
+        `;
 
         }
 
+
+        /* =========================================
+           ÍNDICE ORIGINAL NO comprasCenario
+        ========================================= */
+
+        const indiceCenario =
+            cenarioSelecionado
+                ? comprasCenario.indexOf(o)
+                : -1;
+
+
+        /* =========================================
+           QUANTIDADE
+        ========================================= */
+
+        let campoQuantidade = "";
+
+
+        if(cenarioSelecionado){
+
+            campoQuantidade = `
+
+                <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="inputQtdOC"
+                    id="qtd_${indiceCenario}"
+                    data-oc="${o.numOcp}"
+                    data-indice="${indiceCenario}"
+                    value="${Number(o.qtdIte) || 0}"
+                    style="
+                        width:100px;
+                        padding:5px;
+                        text-align:right;
+                    "
+                >
+
+            `;
+
+        }
+        else{
+
+            campoQuantidade =
+                Number(o.qtdIte || 0)
+                .toLocaleString("pt-BR");
+
+        }
+
+
         document.getElementById(
-
-            "itens_"+o.numOcp
-
+            "itens_" + o.numOcp
         ).innerHTML += `
 
         <tr>
 
-            <td>${o.codPro}</td>
+            <td>
+                ${o.codPro}
+            </td>
 
-            <td>${o.codDer}</td>
+            <td>
+                ${o.codDer}
+            </td>
 
-            <td>${o.desPro}</td>
+            <td>
+                ${o.desPro}
+            </td>
 
-            <td>${o.qtdIte}</td>
+            <td>
+                ${campoQuantidade}
+            </td>
 
         </tr>
 
@@ -282,12 +353,13 @@ function formatarDataInput(data){
 
 }
 
-
 async function salvarAlteracoes(){
 
-    const etds = document.querySelectorAll(
-        "[id^='etd_']"
-    );
+    const etds =
+        document.querySelectorAll(
+            "[id^='etd_']"
+        );
+
 
     console.log(
         "Qtd OCs:",
@@ -296,209 +368,329 @@ async function salvarAlteracoes(){
 
 
     /* =========================================
+       VERIFICAR CENÁRIO
+    ========================================= */
+
+    if(!cenarioSelecionado){
+
+        mostrarAlerta(
+            "Para alterar uma Ordem de Compra, é necessário " +
+            "estar com um cenário salvo aberto.\n\n" +
+            "As alterações de ETD, ETA, ETA Volk e Qtd não " +
+            "podem ser feitas diretamente nas ordens originais."
+        );
+
+        return;
+    }
+
+
+    /* =========================================
        GUARDAR OCs SALVAS
     ========================================= */
 
-    const ocsSalvas = new Set();
+    const ocsSalvas =
+        new Set();
 
 
+    try{
 
 
-    for(const e of etds){
+        /* =========================================
+           PERCORRER AS OCs
+        ========================================= */
 
-        const oc = e.id.replace(
-            "etd_",
-            ""
-        );
+        for(const e of etds){
 
-
-      const dadosOC = {
-
-    numOcp: oc,
-
-    etd:
-        document.getElementById(
-            "etd_" + oc
-        ).value,
-
-    eta:
-        document.getElementById(
-            "eta_" + oc
-        ).value,
-
-    etaVolk:
-        document.getElementById(
-            "etaVolk_" + oc
-        ).value
-
-};
-
-if (cenarioSelecionado) {
-
-    const ordem = comprasCenario.find(x =>
-
-    String(x.numOcp) === String(oc)
-
-);
-
-if(ordem){
-
-    ordem.etd = dadosOC.etd;
-
-    ordem.eta = dadosOC.eta;
-
-    ordem.etaVolk = dadosOC.etaVolk;
-
-}
-
-} else {
-
-    await window.api.salvarOC(
-
-        dadosOC
-
-    );
-
-}
+            const oc =
+                e.id.replace(
+                    "etd_",
+                    ""
+                );
 
 
-        if(cenarioSelecionado){
+            /* =====================================
+               DATAS
+            ===================================== */
 
-            comprasCenario
-                .filter(x => String(x.numOcp) === String(oc))
-                .forEach(x => {
+            const dadosOC = {
 
-                    x.etd = document.getElementById("etd_" + oc).value;
-                    x.eta = document.getElementById("eta_" + oc).value;
-                    x.etaVolk = document.getElementById("etaVolk_" + oc).value;
+                numOcp:
+                    oc,
+
+                etd:
+                    document.getElementById(
+                        "etd_" + oc
+                    ).value,
+
+                eta:
+                    document.getElementById(
+                        "eta_" + oc
+                    ).value,
+
+                etaVolk:
+                    document.getElementById(
+                        "etaVolk_" + oc
+                    ).value,
+
+                itens: []
+
+            };
+
+
+            /* =====================================
+               QUANTIDADES DESSA OC
+            ===================================== */
+
+            const camposQtd =
+                document.querySelectorAll(
+                    `[data-oc="${oc}"]`
+                );
+
+
+            camposQtd.forEach(campo => {
+
+                const indice =
+                    Number(
+                        campo.dataset.indice
+                    );
+
+
+                let quantidade =
+                    Number(
+                        campo.value
+                    );
+
+
+                if(
+                    !Number.isFinite(
+                        quantidade
+                    )
+                ){
+
+                    quantidade = 0;
+
+                }
+
+
+                if(quantidade < 0){
+
+                    quantidade = 0;
+
+                }
+
+
+                dadosOC.itens.push({
+
+                    indice:
+                        indice,
+
+                    qtdIte:
+                        quantidade
 
                 });
 
+            });
+
+
+            console.log(
+                "Salvando OC:",
+                dadosOC
+            );
+
+
+            /* =====================================
+               SALVAR NO BANCO DO CENÁRIO
+            ===================================== */
+
+            await window.api.salvarDatasOC(
+                cenarioSelecionado.id,
+                dadosOC
+            );
+
+
+            /* =====================================
+               ATUALIZAR MEMÓRIA DO CENÁRIO
+            ===================================== */
+
+            dadosOC.itens.forEach(item => {
+
+                if(
+                    comprasCenario[
+                        item.indice
+                    ]
+                ){
+
+                    comprasCenario[
+                        item.indice
+                    ].qtdIte =
+                        item.qtdIte;
+
+                }
+
+            });
+
+
+            comprasCenario
+                .filter(
+                    x =>
+                        String(x.numOcp) ===
+                        String(oc)
+                )
+                .forEach(x => {
+
+                    x.etd =
+                        dadosOC.etd;
+
+                    x.eta =
+                        dadosOC.eta;
+
+                    x.etaVolk =
+                        dadosOC.etaVolk;
+
+                });
+
+
+            /* =====================================
+               MARCAR OC
+            ===================================== */
+
+            ocsSalvas.add(
+                String(oc)
+            );
+
         }
 
+
+        /* =========================================
+           PEGAR SKUS AFETADOS
+        ========================================= */
+
+        const skusAfetados =
+            new Map();
+
+
+        itensOrdensModal.forEach(item => {
+
+            if(
+                !ocsSalvas.has(
+                    String(item.numOcp)
+                )
+            ){
+
+                return;
+
+            }
+
+
+            const chave =
+                String(item.codPro)
+                +
+                "_"
+                +
+                String(item.codDer);
+
+
+            skusAfetados.set(
+                chave,
+                {
+
+                    codigo:
+                        item.codPro,
+
+                    derivacao:
+                        item.codDer
+
+                }
+            );
+
+        });
+
+
+        console.log(
+            "SKUs afetados:",
+            [...skusAfetados.values()]
+        );
+
+
+        /* =========================================
+           FECHAR MODAL
+        ========================================= */
+
+        fecharOrdens();
+
+
+        await new Promise(
+            resolve =>
+                setTimeout(
+                    resolve,
+                    0
+                )
+        );
+
+
+        /* =========================================
+           RECALCULAR ENTRADAS
+        ========================================= */
+
+        for(
+            const sku of skusAfetados.values()
+        ){
+
+            await atualizarEntradaProduto(
+                sku.codigo,
+                sku.derivacao
+            );
+
+        }
+
+
+        /* =========================================
+           RECALCULAR
+        ========================================= */
+
+        calcularAtual(
+            rowData
+        );
+
+
+        calcularFuturo(
+            rowData
+        );
+
+
+        atualizarGrid(
+            rowData
+        );
+
+
+        /* =========================================
+           SUCESSO
+        ========================================= */
+
+       mostrarAlerta(
+    "✅ Alterações salvas no cenário!"
+);
 
         
+          setTimeout(() => {
+            window.focus();
+        }, 100);
+
+    }
+    catch(erro){
+
+        console.error(
+            "Erro ao salvar alteração da OC:",
+            erro
+        );
 
 
-        ocsSalvas.add(
-            String(oc)
+        mostrarAlerta(
+            "❌ Erro ao salvar a alteração:\n\n" +
+            erro.message
         );
 
     }
-
-
-   
-
-
-    /* =========================================
-       PEGAR SKUS DAS OCs SALVAS
-    ========================================= */
-
-    const skusAfetados = new Map();
-
-
-    itensOrdensModal.forEach(item => {
-
-        if(
-            !ocsSalvas.has(
-                String(item.numOcp)
-            )
-        ){
-            return;
-        }
-
-
-        const chave =
-
-            String(item.codPro)
-
-            + "_"
-
-            + String(item.codDer);
-
-
-        skusAfetados.set(
-            chave,
-            {
-                codigo: item.codPro,
-                derivacao: item.codDer
-            }
-        );
-
-    });
-
-
-    console.log(
-        "SKUs afetados:",
-        [...skusAfetados.values()]
-    );
-
-
-    /* =========================================
-       FECHAR MODAL
-    ========================================= */
-
-    fecharOrdens();
-
-
-    /* PERMITIR REDESENHO DA TELA */
-
-    await new Promise(
-        resolve =>
-            setTimeout(resolve, 0)
-    );
-
-
-    /* =========================================
-       ATUALIZAR SOMENTE ENTRADAS AFETADAS
-    ========================================= */
-
-   
-
-
-    for(const sku of skusAfetados.values()){
-
-        await atualizarEntradaProduto(
-
-            sku.codigo,
-
-            sku.derivacao
-
-        );
-
-    }
-
-
-    
-
-
-    /* =========================================
-       POR ENQUANTO:
-       CÁLCULOS COMPLETOS
-    ========================================= */
-
-    
-
-    calcularAtual(rowData);
-
-    
-
-
-   
-
-    calcularFuturo(rowData);
-
-  
-
-
-   
-
-    atualizarGrid(rowData);
-
-    
-
-
-   
 
 }
 

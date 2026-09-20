@@ -4,37 +4,52 @@
   "description": "SOP Enterprise",
   "main": "main.js",
   "author": "Eliseu Ramos",
+
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win --x64"
   },
-  "build": {
-    "appId": "com.volk.sop",
-    "productName": "SOP Enterprise",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "**/*",
-      "!release/*",
-      "!node_modules/.cache/*",
-       "!dados/**",
-       "!banco/**"
-    ],
-    
-   "extraResources": [],
 
-    "win": {
-      "target": "portable",
-      "icon": "icone.ico"
-    }
+"build": {
+  "appId": "com.volk.sop",
+  "productName": "SOP Enterprise",
+
+  "directories": {
+    "output": "release"
   },
-  "dependencies": {
-    "better-sqlite3": "^12.2.0"
+
+  "files": [
+    "**/*",
+    "!release/**",
+    "!node_modules/.cache/**",
+    "!banco/**",
+    "!dados/**"
+  ],
+
+  "extraFiles": [
+    {
+      "from": "banco",
+      "to": "banco"
+    },
+    {
+      "from": "dados",
+      "to": "dados"
+    }
+  ],
+
+  "win": {
+    "target": "portable",
+    "icon": "icone.ico"
+  }
 },
 
-"devDependencies": {
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "xlsx": "^0.18.5"
+  },
+
+  "devDependencies": {
     "electron": "^42.5.0",
     "electron-builder": "^26.15.3"
-}
+  }
 }

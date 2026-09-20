@@ -114,13 +114,44 @@ function fecharModalCenarios(){
         .getElementById("modalCenarios")
         .style.display="none";
 
+    modoModal = "abrir";
+
+}
+
+async function voltarCenarioPadrao(){
+
+    if(!cenarioSelecionado){
+        fecharModalCenarios();
+        return;
+    }
+
+    const confirmar = await mostrarConfirmacao(
+        "Deseja voltar para o Cenário Padrão?"
+    );
+
+    if(!confirmar){
+        return;
+    }
+
+    cenarioSelecionado = null;
+
+    comprasCenario = [];
+
+    document.getElementById(
+        "lblNomeCenario"
+    ).innerHTML = "Cenário: Padrão";
+
+    fecharModalCenarios();
+
+    await iniciarSistema();
+
 }
 
 async function abrirCenarioSelecionado(){
 
     if(!cenarioSelecionado){
 
-        alert("Selecione um cenário.");
+        mostrarAlerta("Selecione um cenário.");
 
         return;
 
@@ -187,16 +218,18 @@ async function excluirCenario(){
 
     if(!cenarioSelecionado){
 
-        alert("Selecione um cenário.");
+        mostr("Selecione um cenário.");
 
         return;
 
     }
 
-    if(!confirm("Deseja excluir este cenário?")){
+   const confirmar = await mostrarConfirmacao(
+    "Deseja excluir este cenário?"
+    );
 
+    if(!confirmar){
         return;
-
     }
 
     await window.api.excluirCenario(cenarioSelecionado.id);
