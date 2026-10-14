@@ -60,23 +60,67 @@ const codigos =
 
         if (cenarioSelecionado) {
 
-            ordens = comprasCenario.filter(o => {
+    /* =========================================
+       1. ENCONTRAR AS OCs DO PRODUTO CLICADO
+          NO MÊS SELECIONADO
+    ========================================= */
 
-                if (!o.etaVolk) return false;
+    const ocsEncontradas =
+        new Set(
+            comprasCenario
+                .filter(o => {
 
-                return (
+                    if(!o.etaVolk){
+                        return false;
+                    }
 
-                    codigos.includes(String(o.codPro))
+                    if(
+                        String(o.status)
+                            .trim()
+                            .toUpperCase()
+                        ==
+                        "FINALIZADO"
+                    ){
+                        return false;
+                    }
 
-                    &&
+                    return (
+                        codigos.includes(
+                            String(o.codPro)
+                        )
+                        &&
+                        o.etaVolk.substring(0,7)
+                        ===
+                        mesBanco
+                    );
+                })
+                .map(o => o.numOcp)
+        );
 
-                    o.etaVolk.substring(0,7) === mesBanco
+    /* =========================================
+       2. TRAZER TODOS OS ITENS DESSAS OCs
+    ========================================= */
 
-                );
+    ordens =
+        comprasCenario.filter(o => {
 
-            });
+            if(
+                String(o.status)
+                    .trim()
+                    .toUpperCase()
+                ==
+                "FINALIZADO"
+            ){
+                return false;
+            }
 
-        } else {
+            return ocsEncontradas.has(
+                o.numOcp
+            );
+
+        });
+
+} else {
 
             ordens = await window.api.buscarOrdensProduto(
 

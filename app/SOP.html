@@ -798,6 +798,14 @@ button:hover{
                         Descrição
                     </th>
 
+                    <th style="padding:9px; text-align:center;">
+                        Próxima Chegada
+                    </th>
+
+                    <th style="padding:9px; text-align:center;">
+                        OC
+                    </th>
+
                     <th style="padding:9px; text-align:right;">
                         Qtd Falta
                     </th>
@@ -1342,33 +1350,19 @@ button:hover{
                             Descrição
                         </th>
 
-                        <th style="padding:10px;text-align:right;">
-                            Mês Atual
-                        </th>
+                     <th id="mesExcesso0" style="padding:10px;text-align:right;"></th>
 
-                        <th style="padding:10px;text-align:right;">
-                            M+1
-                        </th>
+                    <th id="mesExcesso1" style="padding:10px;text-align:right;"></th>
 
-                        <th style="padding:10px;text-align:right;">
-                            M+2
-                        </th>
+                    <th id="mesExcesso2" style="padding:10px;text-align:right;"></th>
 
-                        <th style="padding:10px;text-align:right;">
-                            M+3
-                        </th>
+                    <th id="mesExcesso3" style="padding:10px;text-align:right;"></th>
 
-                        <th style="padding:10px;text-align:right;">
-                            M+4
-                        </th>
+                    <th id="mesExcesso4" style="padding:10px;text-align:right;"></th>
 
-                        <th style="padding:10px;text-align:right;">
-                            M+5
-                        </th>
+                    <th id="mesExcesso5" style="padding:10px;text-align:right;"></th>
 
-                        <th style="padding:10px;text-align:right;">
-                            M+6
-                        </th>
+                    <th id="mesExcesso6" style="padding:10px;text-align:right;"></th>
 
                         <th style="padding:10px;text-align:right;">
                             Total
@@ -1395,11 +1389,11 @@ button:hover{
 
 /* GERAR 18 MESES */
 
-function gerarMeses(qtd){
+function gerarMeses(qtd, dataBase = new Date()){
 
     const meses = []
 
-    const data = new Date()
+    const data = new Date(dataBase)
 
     const nomes = [
 
@@ -1451,19 +1445,19 @@ function gerarMeses(qtd){
 
 /* MESES */
 
-const meses = gerarMeses(18)
+let meses = gerarMeses(18)
 
-const mesAtual = meses[0]
+let mesAtual = meses[0]
 
 /* =====================================================
    GERAR 12 MESES PASSADOS
 ===================================================== */
 
-function gerarMesesPassados(qtd){
+function gerarMesesPassados(qtd, dataBase = new Date()){
 
     const resultado = []
 
-    const data = new Date()
+    const data = new Date(dataBase)
 
     const nomes = [
         'janeiro',
@@ -1509,8 +1503,72 @@ function gerarMesesPassados(qtd){
 }
 
 
-const mesesPassados =
+let mesesPassados =
     gerarMesesPassados(12)
+
+
+    /* =====================================================
+   ALTERAR PERÍODO DO SISTEMA
+===================================================== */
+
+function definirPeriodoPorMes(mesBase){
+
+    const nomesMeses = [
+        'janeiro',
+        'fevereiro',
+        'março',
+        'abril',
+        'maio',
+        'junho',
+        'julho',
+        'agosto',
+        'setembro',
+        'outubro',
+        'novembro',
+        'dezembro'
+    ];
+
+    const partes = String(mesBase || '').split('-');
+
+    if(partes.length !== 2){
+        return;
+    }
+
+    const nomeMes = partes[0];
+
+    const ano = 2000 + Number(partes[1]);
+
+    const numeroMes =
+        nomesMeses.indexOf(nomeMes);
+
+    if(numeroMes < 0 || !Number.isFinite(ano)){
+        return;
+    }
+
+    const dataBase =
+        new Date(
+            ano,
+            numeroMes,
+            1
+        );
+
+    meses =
+        gerarMeses(
+            18,
+            dataBase
+        );
+
+    mesesPassados =
+        gerarMesesPassados(
+            12,
+            dataBase
+        );
+
+    mesAtual =
+        meses[0];
+
+    atualizarColunasPeriodo();
+}
 
 let comprasCenario = [];
 let ordensCache = [];
@@ -1818,14 +1876,18 @@ class HeaderMesSimulacao {
 /* =====================================================
    MESES PASSADOS - 12 MESES
 ===================================================== */
-
 mesesPassados.forEach(mes => {
 
     columnDefs.push({
 
+        __tipoPeriodo: 'passado',
+
+        __mesOriginal: mes,
+
         headerName: mes,
 
         headerClass: 'past-header',
+
 
         children: [
 
@@ -2655,6 +2717,10 @@ const mesAtualFilhos = [
 
 columnDefs.push({
 
+    __tipoPeriodo: 'atual',
+
+    __mesOriginal: mesAtual,
+
     headerName:mesAtual,
 
     children:mesAtualFilhos,
@@ -2973,7 +3039,11 @@ meses.slice(1).forEach(mes => {
 
     })
 
-   columnDefs.push({
+columnDefs.push({
+
+    __tipoPeriodo: 'futuro',
+
+    __mesOriginal: mes,
 
     headerName:mes,
 
@@ -2987,6 +3057,178 @@ meses.slice(1).forEach(mes => {
 })
 
 })
+
+
+/* =====================================================
+   ATUALIZAR COLUNAS CONFORME O PERÍODO
+===================================================== */
+
+function atualizarColunasPeriodo(){
+
+    if(!gridApi){
+        return;
+    }
+
+    let indicePassado = 0;
+    let indiceFuturo = 0;
+
+    columnDefs.forEach(coluna => {
+
+        if(!coluna.__tipoPeriodo){
+            return;
+        }
+
+        /* =========================================
+           MESES PASSADOS
+        ========================================= */
+
+        if(coluna.__tipoPeriodo === 'passado'){
+
+            const novoMes =
+                mesesPassados[indicePassado];
+
+            if(!novoMes){
+                return;
+            }
+
+            const mesAntigo =
+                coluna.__mesOriginal;
+
+            coluna.headerName =
+                novoMes;
+
+            if(Array.isArray(coluna.children)){
+
+                coluna.children.forEach(filho => {
+
+                    if(
+                        typeof filho.field === 'string' &&
+                        filho.field.startsWith(
+                            mesAntigo + '_'
+                        )
+                    ){
+
+                        filho.field =
+                            novoMes +
+                            filho.field.substring(
+                                mesAntigo.length
+                            );
+
+                    }
+
+                });
+
+            }
+
+            coluna.__mesOriginal =
+                novoMes;
+
+            indicePassado++;
+
+            return;
+        }
+
+        /* =========================================
+           MÊS ATUAL
+        ========================================= */
+
+        if(coluna.__tipoPeriodo === 'atual'){
+
+            const novoMes =
+                mesAtual;
+
+            const mesAntigo =
+                coluna.__mesOriginal;
+
+            coluna.headerName =
+                novoMes;
+
+            if(Array.isArray(coluna.children)){
+
+                coluna.children.forEach(filho => {
+
+                    if(
+                        typeof filho.field === 'string' &&
+                        filho.field.startsWith(
+                            mesAntigo + '_'
+                        )
+                    ){
+
+                        filho.field =
+                            novoMes +
+                            filho.field.substring(
+                                mesAntigo.length
+                            );
+
+                    }
+
+                });
+
+            }
+
+            coluna.__mesOriginal =
+                novoMes;
+
+            return;
+        }
+
+        /* =========================================
+           MESES FUTUROS
+        ========================================= */
+
+        if(coluna.__tipoPeriodo === 'futuro'){
+
+            const novoMes =
+                meses[indiceFuturo + 1];
+
+            if(!novoMes){
+                return;
+            }
+
+            const mesAntigo =
+                coluna.__mesOriginal;
+
+            coluna.headerName =
+                novoMes;
+
+            if(Array.isArray(coluna.children)){
+
+                coluna.children.forEach(filho => {
+
+                    if(
+                        typeof filho.field === 'string' &&
+                        filho.field.startsWith(
+                            mesAntigo + '_'
+                        )
+                    ){
+
+                        filho.field =
+                            novoMes +
+                            filho.field.substring(
+                                mesAntigo.length
+                            );
+
+                    }
+
+                });
+
+            }
+
+            coluna.__mesOriginal =
+                novoMes;
+
+            indiceFuturo++;
+
+        }
+
+    });
+
+    gridApi.setGridOption(
+        "columnDefs",
+        columnDefs
+    );
+
+}
 
 /* DADOS */
 
@@ -3796,9 +4038,103 @@ function ocultarGruposIniciais(){
 
 iniciarSistema()
 
-function exportar(){
+async function exportar(){
 
-    gridOptions.api.exportDataAsCsv()
+    const colunas =
+        gridApi.getAllDisplayedColumns();
+
+    const dados = [];
+
+    // CABEÇALHO
+    dados.push(
+        colunas.map(coluna => {
+
+            return (
+                coluna.getColDef().headerName ||
+                coluna.getColId()
+            );
+
+        })
+    );
+
+    // LINHAS VISÍVEIS DA GRADE
+    for(
+        let i = 0;
+        i < gridApi.getDisplayedRowCount();
+        i++
+    ){
+
+        const linha =
+            gridApi.getDisplayedRowAtIndex(i);
+
+        if(!linha){
+            continue;
+        }
+
+        dados.push(
+            colunas.map(coluna => {
+
+                const campo =
+                    coluna.getColDef().field;
+
+                return campo
+                    ? (
+                        linha.data?.[campo] ?? ""
+                    )
+                    : "";
+
+            })
+        );
+
+    }
+
+    if(dados.length <= 1){
+
+        mostrarAlerta(
+            "Não existem dados para exportar."
+        );
+
+        return;
+    }
+
+    const resultado =
+        await window.api.exportarXlsx({
+
+            nomeArquivo:
+                "SOP_Exportacao",
+
+            dados:
+                dados
+
+        });
+
+    if(
+        resultado &&
+        resultado.cancelado
+    ){
+
+        return;
+    }
+
+    if(
+        !resultado ||
+        !resultado.sucesso
+    ){
+
+        mostrarAlerta(
+            "Erro ao exportar Excel:\n\n" +
+            (
+                resultado?.erro ||
+                "Erro desconhecido."
+            )
+        );
+
+        return;
+    }
+
+    mostrarAlerta(
+        "✅ Excel exportado com sucesso!"
+    );
 
 }
 
@@ -4305,7 +4641,7 @@ Fechar
                 <input
                     type="text"
                     id="filtroEmbarque"
-                    placeholder="Via / Embarque"
+                    placeholder="Embarque"
                 >
             </div>
 
@@ -4345,7 +4681,11 @@ Fechar
     <br>
     <select id="filtroStatus">
         <option value="">Todos</option>
+        <option value="Aguardando PI">Aguardando PI</option>
         <option value="Em produção">Em produção</option>
+        <option value="Com booking">Com booking</option>
+        <option value="Em transito">Em transito</option>
+        <option value="Aguardando desembaraço">Aguardando desembaraço</option>
         <option value="Finalizado">Finalizado</option>
     </select>
 </div>
@@ -4423,8 +4763,9 @@ Fechar
 
                     <tr>
 
-                        <th>OC</th>
+                       <th>OC</th>
                         <th>Lote</th>
+                        <th>Embarque</th>
                         <th>Produto</th>
                         <th>Der</th>
                         <th>Descrição</th>
@@ -4433,7 +4774,7 @@ Fechar
                         <th>Valor Unit.</th>
                         <th>Valor Total</th>
 
-                        <th>Embarque</th>
+                        
 
                         <th>ETD</th>
                         <th>ETA</th>
@@ -4694,42 +5035,49 @@ Fechar
 
 }
 
-function toggleMenuSOE(){
+function fecharTodosMenus() {
 
-    const menu =
-        document.getElementById("menuSOE");
-
-    menu.style.display =
-        menu.style.display == "block"
-            ? "none"
-            : "block";
+    document.querySelectorAll(".dropdownConteudo").forEach(menu => {
+        menu.style.display = "none";
+    });
 
 }
 
 
-function toggleMenuConsulta(){
+function alternarMenu(id) {
 
-    const menu =
-        document.getElementById("menuConsulta");
+    const menu = document.getElementById(id);
 
-    menu.style.display =
-        menu.style.display == "block"
-            ? "none"
-            : "block";
+    const estavaAberto = menu.style.display === "block";
+
+    // Fecha todos os menus
+    fecharTodosMenus();
+
+    // Se o menu estava fechado, abre
+    if (!estavaAberto) {
+        menu.style.display = "block";
+    }
 
 }
 
 
-function toggleMenuConfiguracao(){
+function toggleMenuSOE() {
+    alternarMenu("menuSOE");
+}
 
-    const menu =
-        document.getElementById("menuConfiguracao");
 
-    menu.style.display =
-        menu.style.display == "block"
-            ? "none"
-            : "block";
+function toggleMenuConsulta() {
+    alternarMenu("menuConsulta");
+}
 
+
+function toggleMenuConsolidacao() {
+    alternarMenu("menuConsolidacao");
+}
+
+
+function toggleMenuConfiguracao() {
+    alternarMenu("menuConfiguracao");
 }
 
 document.addEventListener("click", function(e){
@@ -5632,7 +5980,7 @@ async function buscarConsultaCompras(){
 
                 const valorEmbarque =
                     String(
-                        o.via || ""
+                        o.embarque || ""
                     )
                     .toLowerCase();
 
@@ -5887,14 +6235,11 @@ function montarTabelaConsultaCompras(ordens){
 
 
         tr.innerHTML = `
-            <td>${o.numOcp || ""}</td>
-
+           <td>${o.numOcp || ""}</td>
             <td>${o.codLot || ""}</td>
-
+            <td>${o.embarque || ""}</td>
             <td>${o.codPro || ""}</td>
-
             <td>${o.codDer || ""}</td>
-
             <td>${o.desPro || ""}</td>
 
             <td>
@@ -5924,7 +6269,7 @@ function montarTabelaConsultaCompras(ordens){
                     )}
             </td>
 
-            <td>${o.via || ""}</td>
+            <td>${o.embarque || ""}</td>
 
             <td>${formatarDataConsulta(o.etd)}</td>
 
@@ -6160,7 +6505,7 @@ function abrirModalFaltaAtual(){
             <tr>
 
                 <td
-                    colspan="6"
+                colspan="8"
                     style="
                         padding:30px;
                         text-align:center;
@@ -6197,6 +6542,12 @@ function abrirModalFaltaAtual(){
 
             const valorTotal =
                 item.valorTotal;
+
+                const proximaChegada =
+    obterProximaChegada(
+        item.codigo,
+        item.tam
+    );
 
             valorTotalGeral +=
                 valorTotal;
@@ -6239,6 +6590,39 @@ function abrirModalFaltaAtual(){
                     >
                         ${item.descricao || ""}
                     </td>
+
+                    <td
+                    style="
+                        padding:9px;
+                        text-align:center;
+                        font-weight:600;
+                    "
+                >
+                    ${
+                        proximaChegada
+                            ? String(
+                                proximaChegada.etaVolk
+                            ).substring(0,10)
+                            .split("-")
+                            .reverse()
+                            .join("/")
+                            : "-"
+                                    }
+                                </td>
+
+                <td
+                    style="
+                        padding:9px;
+                        text-align:center;
+                        font-weight:600;
+                    "
+                >
+                    ${
+                        proximaChegada
+                            ? proximaChegada.numOcp
+                            : "-"
+                    }
+                </td>
 
 
                     <!-- QTD FALTA -->
@@ -6307,7 +6691,7 @@ function abrirModalFaltaAtual(){
         <tr>
 
             <td
-                colspan="5"
+                colspan="7"
                 style="
                     padding:10px;
                     text-align:right;
@@ -6474,6 +6858,21 @@ window.abrirModalExcessosPrevistos = function(){
 
     const mesesExcesso =
         meses.slice(0,7);
+
+
+        for(let i = 0; i < mesesExcesso.length; i++){
+
+    const elemento =
+        document.getElementById(
+            `mesExcesso${i}`
+        );
+
+    if(elemento){
+        elemento.textContent =
+            mesesExcesso[i];
+    }
+
+}
 
 
     /* =========================================
@@ -7211,6 +7610,63 @@ function mostrarConfirmacao(mensagem){
 
     });
 
+}
+
+
+function obterProximaChegada(codigo, derivacao){
+
+    const hoje = new Date();
+
+    hoje.setHours(0, 0, 0, 0);
+
+    const ordens =
+        Array.isArray(ordensCache)
+            ? ordensCache
+            : [];
+
+    const candidatas =
+        ordens
+            .filter(o => {
+
+                const mesmoProduto =
+                    String(o.codPro || "").trim()
+                    ===
+                    String(codigo || "").trim();
+
+                const mesmaDerivacao =
+                    String(o.codDer || "").trim()
+                    ===
+                    String(derivacao || "").trim();
+
+                if(
+                    !mesmoProduto ||
+                    !mesmaDerivacao ||
+                    !o.etaVolk
+                ){
+                    return false;
+                }
+
+                const data =
+                    new Date(
+                        String(o.etaVolk).substring(0,10)
+                        + "T00:00:00"
+                    );
+
+                return (
+                    !isNaN(data.getTime()) &&
+                    data >= hoje
+                );
+
+            })
+
+            .sort(
+                (a, b) =>
+                    new Date(a.etaVolk)
+                    -
+                    new Date(b.etaVolk)
+            );
+
+    return candidatas[0] || null;
 }
 
 

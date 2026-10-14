@@ -86,6 +86,9 @@ function dadosFiltradosResumo(){
    SOMA
 ========================================================= */
 
+
+
+
 function soma(dados, campo){
 
     return dados.reduce(
@@ -93,7 +96,7 @@ function soma(dados, campo){
             total + (Number(x[campo]) || 0),
         0
     );
-}
+} 
 
 
 /* =========================================================

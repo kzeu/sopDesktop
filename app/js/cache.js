@@ -1,15 +1,18 @@
-const db = require("../../database");
+const { usarBanco } = require("../../database");
 
 function buscarCacheHoje() {
 
-    const hoje = new Date().toISOString().slice(0,10);
+    const hoje = new Date().toISOString().slice(0, 10);
 
-    return db.prepare(`
-        SELECT *
-        FROM cache_dia
-        WHERE data_cache = ?
-    `).get(hoje);
+    return usarBanco(db => {
 
+        return db.prepare(`
+            SELECT *
+            FROM cache_dia
+            WHERE data_cache = ?
+        `).get(hoje);
+
+    });
 }
 
 
@@ -18,43 +21,55 @@ function excluirCacheHoje() {
     const hoje =
         new Date()
             .toISOString()
-            .slice(0,10);
+            .slice(0, 10);
 
-    db.prepare(`
-        DELETE FROM cache_dia
-        WHERE data_cache = ?
-    `).run(hoje);
+    return usarBanco(db => {
 
+        db.prepare(`
+            DELETE FROM cache_dia
+            WHERE data_cache = ?
+        `).run(hoje);
+
+        return true;
+
+    });
 }
+
 
 function salvarCacheHoje(rowData, ordens) {
 
-    const hoje = new Date().toISOString().slice(0,10);
+    const hoje = new Date().toISOString().slice(0, 10);
 
-    db.prepare(`
-        INSERT OR REPLACE INTO cache_dia(
+    return usarBanco(db => {
 
-            data_cache,
+        db.prepare(`
+            INSERT OR REPLACE INTO cache_dia(
 
-            rowdata_json,
+                data_cache,
 
-            ordens_json
+                rowdata_json,
 
-        )
+                ordens_json
 
-        VALUES(?,?,?)
+            )
 
-    `).run(
+            VALUES(?,?,?)
 
-        hoje,
+        `).run(
 
-        JSON.stringify(rowData),
+            hoje,
 
-        JSON.stringify(ordens)
+            JSON.stringify(rowData),
 
-    );
+            JSON.stringify(ordens)
 
+        );
+
+        return true;
+
+    });
 }
+
 
 module.exports = {
 

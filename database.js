@@ -1,61 +1,22 @@
-console.log("CARREGANDO DATABASE...");
-
 const Database = require("better-sqlite3");
 const path = require("path");
 const fs = require("fs");
 const { app } = require("electron");
 
-
-/* =====================================================
-   DESCOBRIR PASTA BASE DO SISTEMA
-===================================================== */
-
-/*
-   DESENVOLVIMENTO:
-   usa a pasta atual do projeto
-
-   EXECUTÁVEL:
-   usa a pasta onde está o .exe
-*/
-
 const pastaBase = app.isPackaged
     ? path.dirname(process.execPath)
     : __dirname;
-
-
-/* =====================================================
-   PASTA DO BANCO
-===================================================== */
 
 const pastaBanco = path.join(
     pastaBase,
     "banco"
 );
 
-
-/* =====================================================
-   CRIAR PASTA BANCO SE NÃO EXISTIR
-===================================================== */
-
 if (!fs.existsSync(pastaBanco)) {
-
-    fs.mkdirSync(
-        pastaBanco,
-        {
-            recursive: true
-        }
-    );
-
-    console.log(
-        "Pasta banco criada:",
-        pastaBanco
-    );
+    fs.mkdirSync(pastaBanco, {
+        recursive: true
+    });
 }
-
-
-/* =====================================================
-   CAMINHO COMPLETO DO BANCO
-===================================================== */
 
 const caminhoBanco = path.join(
     pastaBanco,
@@ -64,66 +25,49 @@ const caminhoBanco = path.join(
 
 
 /* =====================================================
-   ABRIR / CRIAR SQLITE
+   ABRIR BANCO
 ===================================================== */
 
-let db;
+function abrirBanco() {
 
-try {
-
-    db = new Database(
+    const db = new Database(
         caminhoBanco
     );
 
-    console.log(
-        "DATABASE CARREGADO"
-    );
+    db.pragma("journal_mode = WAL");
+    db.pragma("busy_timeout = 15000");
 
-    console.log(
-        "Banco:",
-        caminhoBanco
-    );
-
-    console.log(
-        "Modo:",
-        app.isPackaged
-            ? "EXECUTÁVEL"
-            : "DESENVOLVIMENTO"
-    );
-
-}
-catch (erro) {
-
-    console.error(
-        "ERRO AO ABRIR BANCO:",
-        erro
-    );
-
-    throw erro;
+    return db;
 }
 
 
 /* =====================================================
-   CONFIGURAÇÕES SQLITE
+   EXECUTAR E FECHAR BANCO
 ===================================================== */
 
-/*
-   Melhora concorrência e desempenho.
-*/
+function usarBanco(funcao) {
 
-db.pragma("journal_mode = WAL");
+    const db = abrirBanco();
 
+    try {
 
-/*
-   Aguarda um pouco se o banco estiver ocupado,
-   em vez de falhar imediatamente.
-*/
+        return funcao(db);
 
-db.pragma("busy_timeout = 5000");
+    }
+    finally {
+
+        db.close();
+
+    }
+
+}
 
 
 /* =====================================================
-   EXPORTAR CONEXÃO
+   EXPORTAR
 ===================================================== */
 
-module.exports = db;
+module.exports = {
+    abrirBanco,
+    usarBanco
+};

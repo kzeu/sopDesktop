@@ -1239,21 +1239,17 @@ if (comprasCenario.length === 0) {
 
             descricao: txtDescricaoCenario.value,
 
-            dados_json: JSON.stringify({
+           dados_json: JSON.stringify({
 
-                rowData:
+            mesBase: mesAtual,
 
-                    rowData.filter(x =>
+            rowData:
+                rowData.filter(x =>
+                    x.tipo != "subtotal" &&
+                    x.tipo != "total"
+                )
 
-                        x.tipo != "subtotal"
-
-                        &&
-
-                        x.tipo != "total"
-
-                    )
-
-            }),
+        }),
 
             ordens_json: JSON.stringify(
 

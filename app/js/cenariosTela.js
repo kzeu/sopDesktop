@@ -133,19 +133,39 @@ async function voltarCenarioPadrao(){
         return;
     }
 
-    cenarioSelecionado = null;
+      cenarioSelecionado = null;
 
-    comprasCenario = [];
+        comprasCenario = [];
 
-    document.getElementById(
-        "lblNomeCenario"
-    ).innerHTML = "Cenário: Padrão";
+        /* VOLTAR PARA O PERÍODO ATUAL */
 
-    fecharModalCenarios();
+        meses =
+            gerarMeses(
+                18,
+                new Date()
+            );
 
-    await iniciarSistema();
+        mesesPassados =
+            gerarMesesPassados(
+                12,
+                new Date()
+            );
 
-}
+        mesAtual =
+            meses[0];
+
+        atualizarColunasPeriodo();
+
+        document.getElementById(
+            "lblNomeCenario"
+        ).innerHTML =
+            "Cenário: Padrão";
+
+        fecharModalCenarios();
+
+        await iniciarSistema();
+
+        }
 
 async function abrirCenarioSelecionado(){
 
@@ -168,9 +188,24 @@ async function abrirCenarioSelecionado(){
         cenarioSelecionado = cenario;
 
             // Carrega o cenário salvo
-          const dados = JSON.parse(cenario.dados_json);
+           // Carrega o cenário salvo
+            const dados =
+                JSON.parse(cenario.dados_json);
 
-            rowData = dados.rowData || [];
+            /* =========================================
+            RESTAURAR PERÍODO DO CENÁRIO
+            ========================================= */
+
+            if(dados.mesBase){
+
+                definirPeriodoPorMes(
+                    dados.mesBase
+                );
+
+            }
+
+            rowData =
+                dados.rowData || [];
 
            comprasCenario =
 

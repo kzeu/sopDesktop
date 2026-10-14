@@ -1,50 +1,58 @@
-const db = require("../../database");
+const { usarBanco } = require("../../database");
+
 
 /* =====================================================
-   CRIAR TABELA
+   CRIAR TABELAS
 ===================================================== */
 
-db.exec(`
+usarBanco(db => {
 
-CREATE TABLE IF NOT EXISTS cenarios(
+    db.exec(`
 
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS cenarios(
 
-    nome TEXT NOT NULL,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    descricao TEXT,
+            nome TEXT NOT NULL,
 
-    dados_json TEXT NOT NULL,
+            descricao TEXT,
 
-    data_alteracao DATETIME DEFAULT CURRENT_TIMESTAMP,
+            dados_json TEXT NOT NULL,
 
-    ordens_json TEXT NOT NULL
+            data_alteracao DATETIME DEFAULT CURRENT_TIMESTAMP,
 
-)
+            ordens_json TEXT NOT NULL
 
-`);
+        );
 
-db.exec(`
 
-CREATE TABLE IF NOT EXISTS cenario_ordens(
+        CREATE TABLE IF NOT EXISTS cenario_ordens(
 
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    cenario_id INTEGER NOT NULL,
+            cenario_id INTEGER NOT NULL,
 
-    numOcp TEXT NOT NULL,
+            numOcp TEXT NOT NULL,
 
-    etd TEXT,
+            etd TEXT,
 
-    eta TEXT,
+            eta TEXT,
 
-    etaVolk TEXT,
+            etaVolk TEXT,
 
-    UNIQUE(cenario_id,numOcp)
+            UNIQUE(cenario_id,numOcp)
 
-)
+        )
 
-`);
+    `);
+
+});
+
+
+/* =====================================================
+   SALVAR DATAS DA OC
+===================================================== */
+
 function salvarDatasOC(cenarioId, dados){
 
     console.log(
@@ -66,200 +74,212 @@ function salvarDatasOC(cenarioId, dados){
     );
 
 
-    /* =========================================
-       BUSCAR CENÁRIO
-    ========================================= */
+    return usarBanco(db => {
 
-    const cenario =
-        db.prepare(`
-            SELECT ordens_json
-            FROM cenarios
-            WHERE id = ?
-        `).get(cenarioId);
+        /* =========================================
+           BUSCAR CENÁRIO
+        ========================================= */
 
-
-    if(!cenario){
-
-        throw new Error(
-            "Cenário não encontrado."
-        );
-
-    }
+        const cenario =
+            db.prepare(`
+                SELECT ordens_json
+                FROM cenarios
+                WHERE id = ?
+            `).get(cenarioId);
 
 
-    /* =========================================
-       LER ORDENS
-    ========================================= */
+        if(!cenario){
 
-    let ordens = [];
-
-
-    try{
-
-        ordens =
-            JSON.parse(
-                cenario.ordens_json || "[]"
+            throw new Error(
+                "Cenário não encontrado."
             );
 
-    }
-    catch(erro){
-
-        throw new Error(
-            "Não foi possível ler as ordens do cenário."
-        );
-
-    }
+        }
 
 
-    /* =========================================
-       LOCALIZAR TODAS AS LINHAS DA OC
-    ========================================= */
+        /* =========================================
+           LER ORDENS
+        ========================================= */
 
-    const ordensOC =
-        ordens.filter(
-            x =>
-                String(x.numOcp) ===
-                String(dados.numOcp)
-        );
+        let ordens = [];
 
 
-    if(ordensOC.length === 0){
+        try{
 
-        throw new Error(
-            "A Ordem de Compra " +
-            dados.numOcp +
-            " não existe neste cenário."
-        );
-
-    }
-
-
-    /* =========================================
-       ALTERAR DATAS
-    ========================================= */
-
-    ordensOC.forEach(ordem => {
-
-        ordem.etd =
-            dados.etd;
-
-        ordem.eta =
-            dados.eta;
-
-        ordem.etaVolk =
-            dados.etaVolk;
-
-    });
-
-
-    /* =========================================
-       ALTERAR QUANTIDADES
-    ========================================= */
-
-    if(
-        Array.isArray(
-            dados.itens
-        )
-    ){
-
-        dados.itens.forEach(item => {
-
-            const indice =
-                Number(
-                    item.indice
+            ordens =
+                JSON.parse(
+                    cenario.ordens_json || "[]"
                 );
 
+        }
+        catch(erro){
 
-            if(
-                !Number.isInteger(
-                    indice
-                )
-            ){
+            throw new Error(
+                "Não foi possível ler as ordens do cenário."
+            );
 
-                return;
-
-            }
+        }
 
 
-            if(
-                !ordens[indice]
-            ){
+        /* =========================================
+           LOCALIZAR TODAS AS LINHAS DA OC
+        ========================================= */
 
-                return;
-
-            }
-
-
-            /* GARANTIR QUE É A MESMA OC */
-
-            if(
-                String(
-                    ordens[indice].numOcp
-                )
-                !==
-                String(
-                    dados.numOcp
-                )
-            ){
-
-                return;
-
-            }
+        const ordensOC =
+            ordens.filter(
+                x =>
+                    String(x.numOcp) ===
+                    String(dados.numOcp)
+            );
 
 
-            ordens[indice].qtdIte =
-                Number(
-                    item.qtdIte
-                ) || 0;
+        if(ordensOC.length === 0){
+
+            throw new Error(
+                "A Ordem de Compra " +
+                dados.numOcp +
+                " não existe neste cenário."
+            );
+
+        }
+
+
+        /* =========================================
+           ALTERAR DATAS
+        ========================================= */
+
+        ordensOC.forEach(ordem => {
+
+            ordem.etd =
+                dados.etd;
+
+            ordem.eta =
+                dados.eta;
+
+            ordem.etaVolk =
+                dados.etaVolk;
 
         });
 
-    }
+
+        /* =========================================
+           ALTERAR QUANTIDADES
+        ========================================= */
+
+        if(
+            Array.isArray(
+                dados.itens
+            )
+        ){
+
+            dados.itens.forEach(item => {
+
+                const indice =
+                    Number(
+                        item.indice
+                    );
 
 
-    /* =========================================
-       GRAVAR CENÁRIO
-    ========================================= */
+                if(
+                    !Number.isInteger(
+                        indice
+                    )
+                ){
 
-    db.prepare(`
-        UPDATE cenarios
-        SET
-            ordens_json = ?,
-            data_alteracao =
-                CURRENT_TIMESTAMP
-        WHERE id = ?
-    `).run(
+                    return;
 
-        JSON.stringify(
-            ordens
-        ),
-
-        cenarioId
-
-    );
+                }
 
 
-    console.log(
-        "OC e quantidades salvas com sucesso."
-    );
+                if(
+                    !ordens[indice]
+                ){
+
+                    return;
+
+                }
 
 
-    return true;
+                /* GARANTIR QUE É A MESMA OC */
+
+                if(
+                    String(
+                        ordens[indice].numOcp
+                    )
+                    !==
+                    String(
+                        dados.numOcp
+                    )
+                ){
+
+                    return;
+
+                }
+
+
+                ordens[indice].qtdIte =
+                    Number(
+                        item.qtdIte
+                    ) || 0;
+
+            });
+
+        }
+
+
+        /* =========================================
+           GRAVAR CENÁRIO
+        ========================================= */
+
+        db.prepare(`
+            UPDATE cenarios
+            SET
+                ordens_json = ?,
+                data_alteracao =
+                    CURRENT_TIMESTAMP
+            WHERE id = ?
+        `).run(
+
+            JSON.stringify(
+                ordens
+            ),
+
+            cenarioId
+
+        );
+
+
+        console.log(
+            "OC e quantidades salvas com sucesso."
+        );
+
+
+        return true;
+
+    });
 
 }
 
 
+/* =====================================================
+   BUSCAR DATAS OC
+===================================================== */
+
 function buscarDatasOC(cenarioId){
 
-    return db.prepare(`
+    return usarBanco(db => {
 
-        SELECT *
+        return db.prepare(`
 
-        FROM cenario_ordens
+            SELECT *
 
-        WHERE cenario_id=?
+            FROM cenario_ordens
 
-    `).all(cenarioId);
+            WHERE cenario_id=?
+
+        `).all(cenarioId);
+
+    });
 
 }
 
@@ -270,117 +290,182 @@ function buscarDatasOC(cenarioId){
 
 function inserirCenario(cenario){
 
-    const stmt = db.prepare(`
+    return usarBanco(db => {
 
-      INSERT INTO cenarios(
+        const stmt = db.prepare(`
 
-            nome,
-            descricao,
-            dados_json,
-            ordens_json
+            INSERT INTO cenarios(
 
-        )
+                nome,
+                descricao,
+                dados_json,
+                ordens_json
 
-        VALUES(
+            )
 
-            ?,?,?,?
+            VALUES(
 
-        )
+                ?,?,?,?
 
-    `);
+            )
 
-    const info = stmt.run(
+        `);
 
-    cenario.nome,
-    cenario.descricao,
-    cenario.dados_json,
-    cenario.ordens_json
 
-    );
+        const info = stmt.run(
 
-    return info.lastInsertRowid;
+            cenario.nome,
+
+            cenario.descricao,
+
+            cenario.dados_json,
+
+            cenario.ordens_json
+
+        );
+
+
+        return info.lastInsertRowid;
+
+    });
 
 }
+
+
+/* =====================================================
+   LISTAR CENÁRIOS
+===================================================== */
 
 function listarCenarios(){
 
-    const stmt = db.prepare(`
+    return usarBanco(db => {
 
-        SELECT
-            id,
-            nome,
-            descricao,
-            data_criacao,
-            data_alteracao
+        const stmt = db.prepare(`
 
-        FROM cenarios
+            SELECT
+                id,
+                nome,
+                descricao,
+                data_criacao,
+                data_alteracao
 
-        ORDER BY data_alteracao DESC
+            FROM cenarios
 
-    `);
+            ORDER BY data_alteracao DESC
 
-    return stmt.all();
+        `);
+
+
+        return stmt.all();
+
+    });
 
 }
+
+
+/* =====================================================
+   BUSCAR CENÁRIO
+===================================================== */
+
 function buscarCenario(id){
 
-    const stmt = db.prepare(`
+    return usarBanco(db => {
 
-        SELECT *
+        const stmt = db.prepare(`
 
-        FROM cenarios
+            SELECT *
 
-        WHERE id = ?
+            FROM cenarios
 
-    `);
+            WHERE id = ?
 
-    return stmt.get(id);
+        `);
+
+
+        return stmt.get(id);
+
+    });
 
 }
+
+
+/* =====================================================
+   EXCLUIR CENÁRIO
+===================================================== */
 
 function excluirCenario(id){
 
-    const stmt = db.prepare(`
+    return usarBanco(db => {
 
-        DELETE FROM cenarios
+        const stmt = db.prepare(`
 
-        WHERE id = ?
+            DELETE FROM cenarios
 
-    `);
+            WHERE id = ?
 
-    stmt.run(id);
+        `);
+
+
+        stmt.run(id);
+
+        return true;
+
+    });
 
 }
+
+
+/* =====================================================
+   ATUALIZAR CENÁRIO
+===================================================== */
 
 function atualizarCenario(cenario){
 
-    const stmt = db.prepare(`
+    return usarBanco(db => {
 
-       UPDATE cenarios
+        const stmt = db.prepare(`
 
-       SET
+            UPDATE cenarios
 
-        nome = ?,
-        descricao = ?,
-        dados_json = ?,
-        ordens_json = ?,
-        data_alteracao = CURRENT_TIMESTAMP
+            SET
 
-        WHERE id = ?
+                nome = ?,
 
-    `);
+                descricao = ?,
 
-    stmt.run(
+                dados_json = ?,
 
-        cenario.nome,
-        cenario.descricao,
-        cenario.dados_json,
-        cenario.ordens_json,
-        cenario.id
+                ordens_json = ?,
 
-    );
+                data_alteracao =
+                    CURRENT_TIMESTAMP
+
+            WHERE id = ?
+
+        `);
+
+
+        stmt.run(
+
+            cenario.nome,
+
+            cenario.descricao,
+
+            cenario.dados_json,
+
+            cenario.ordens_json,
+
+            cenario.id
+
+        );
+
+
+        return true;
+
+    });
 
 }
+
 
 /* =====================================================
    EXPORTAR
@@ -389,11 +474,17 @@ function atualizarCenario(cenario){
 module.exports = {
 
     inserirCenario,
+
     listarCenarios,
+
     buscarCenario,
+
     excluirCenario,
+
     atualizarCenario,
+
     salvarDatasOC,
+
     buscarDatasOC
 
 };

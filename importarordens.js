@@ -1,182 +1,204 @@
 const fs = require("fs");
 const path = require("path");
-const db = require("./database");
+const { usarBanco } = require("./database");
+
 
 function importarOrdens() {
 
- const { app } = require("electron");
+    const { app } = require("electron");
 
-const pastaBase = app.isPackaged
-    ? path.dirname(process.execPath)
-    : __dirname;
 
-const caminhoJson = path.join(
-    pastaBase,
-    "dados",
-    "ordensbionline.json"
-);
+    const pastaBase = app.isPackaged
+        ? path.dirname(process.execPath)
+        : __dirname;
+
+
+    const caminhoJson = path.join(
+        pastaBase,
+        "dados",
+        "ordensbionline.json"
+    );
+
 
     if (!fs.existsSync(caminhoJson)) {
 
-        console.log("Arquivo ordensC.json não encontrado.");
+        console.log(
+            "Arquivo ordensC.json não encontrado."
+        );
 
         return;
 
     }
 
-    console.log("Importando ordens...");
 
-    const json = JSON.parse(
-        fs.readFileSync(caminhoJson, "utf8")
+    console.log(
+        "Importando ordens..."
     );
 
-    db.exec("DELETE FROM ordens_compra");
 
-    const stmt = db.prepare(`
-
-       INSERT INTO ordens_compra(
-
-            numOcp,
-            codLot,
-            codPro,
-            codDer,
-            seqOcp,
-            desPro,
-            qtdIte,
-            valorUnit,
-            valorTotal,
-            codNcm,
-            datOcp,
-            codeDerivation,
-            importador,
-            status,
-            fornecedor,
-            paisOrigem,
-            portoOrigem,
-            via,
-            etd,
-            eta,
-            etaVolk,
-            curvaABC
-
+    const json = JSON.parse(
+        fs.readFileSync(
+            caminhoJson,
+            "utf8"
         )
+    );
 
-        VALUES(
 
-            ?,?,?,?,?,?,
-            ?,?,?,?,?,?,
-            ?,?,?,?,?,?,
-            ?,?,?,?
+    /* =====================================================
+       ABRIR BANCO
+       IMPORTAR TUDO
+       FECHAR BANCO
+    ===================================================== */
 
-        )
+    usarBanco(db => {
 
-    `);
+        /* =================================================
+           LIMPAR ORDENS ANTIGAS
+        ================================================= */
 
-    const inserir = db.transaction((dados) => {
+        db.exec(
+            "DELETE FROM ordens_compra"
+        );
 
-        for (const item of dados) {
 
-         /*   stmt.run(
+        /* =================================================
+           PREPARAR INSERT
+        ================================================= */
 
-                item["O-Ordens_Compras[numOcp]"],
+        const stmt = db.prepare(`
 
-                item["O-Ordens_Compras[codLot]"],
+            INSERT INTO ordens_compra(
 
-                item["O-Ordens_Compras[codPro]"],
+                numOcp,
+                codLot,
+                codPro,
+                codDer,
+                seqOcp,
+                desPro,
+                qtdIte,
+                valorUnit,
+                valorTotal,
+                codNcm,
+                datOcp,
+                codeDerivation,
+                importador,
+                status,
+                fornecedor,
+                paisOrigem,
+                portoOrigem,
+                via,
+                etd,
+                eta,
+                etaVolk,
+                curvaABC
 
-                item["O-Ordens_Compras[codDer]"],
+            )
 
-                item["O-Ordens_Compras[seqOcp]"],
+            VALUES(
 
-                item["O-Ordens_Compras[desPro]"],
+                ?,?,?,?,?,?,
+                ?,?,?,?,?,?,
+                ?,?,?,?,?,?,
+                ?,?,?,?
 
-                Number(item["O-Ordens_Compras[qtdIte]"] || 0),
+            )
 
-                item["O-Ordens_Compras[codNcm]"],
+        `);
 
-                item["O-Ordens_Compras[datOcp]"],
 
-                item["O-Ordens_Compras[code-derivation2]"],
+        /* =================================================
+           TRANSACTION
+        ================================================= */
 
-                item["O-Ordens_Compras[Importador]"],
+        const inserir =
+            db.transaction((dados) => {
 
-                item["O-Ordens_Compras[Status]"],
+                for (const item of dados) {
 
-                item["O-Ordens_Compras[Fornecedor]"],
 
-                item["O-Ordens_Compras[Pais Origem]"],
-
-                item["O-Ordens_Compras[Porto_Origem]"],
-
-                item["O-Ordens_Compras[Via]"],
-
-                item["O-Ordens_Compras[Etd]"],
-
-                item["O-Ordens_Compras[Eta]"],
-
-                item["O-Ordens_Compras[Eta_Volk]"],
-
-                item["O-Ordens_Compras[CurvaABC]"]
-
-            ); */
-
+                    /* =====================================
+                       INSERT
+                    ===================================== */
 
                     stmt.run(
 
-                item["BIONLINE[OC]"],
+                        item["BIONLINE[OC]"],
 
-                item["BIONLINE[Lote]"],
+                        item["BIONLINE[Lote]"],
 
-                item["BIONLINE[Cód. produto]"],
+                        item["BIONLINE[Cód. produto]"],
 
-                item["BIONLINE[Deriv]"],
+                        item["BIONLINE[Deriv]"],
 
-                1,
+                        1,
 
-                item["BIONLINE[Desc. produto]"],
+                        item["BIONLINE[Desc. produto]"],
 
-                Number(item["BIONLINE[Quantidade]"] || 0),
+                        Number(
+                            item["BIONLINE[Quantidade]"] || 0
+                        ),
 
-                Number(item["BIONLINE[Valor un.]"] || 0),
+                        Number(
+                            item["BIONLINE[Valor un.]"] || 0
+                        ),
 
-                Number(item["BIONLINE[Valor total]"] || 0),
+                        Number(
+                            item["BIONLINE[Valor total]"] || 0
+                        ),
 
-                item["BIONLINE[NCM]"],
+                        item["BIONLINE[NCM]"],
 
-                item["BIONLINE[DATA EMBARQUE]"],
+                        item["BIONLINE[DATA EMBARQUE]"],
 
-                item["BIONLINE[Cód. produto]"] + "-" + item["BIONLINE[Deriv]"],
+                        item["BIONLINE[Cód. produto]"]
+                            + "-"
+                            + item["BIONLINE[Deriv]"],
 
-                item["BIONLINE[Importador]"],
+                        item["BIONLINE[Importador]"],
 
-                item["BIONLINE[Status]"],
+                        item["BIONLINE[Status]"],
 
-                item["BIONLINE[Fornecedor]"],
+                        item["BIONLINE[Fornecedor]"],
 
-                "",
+                        "",
 
-                "",
+                        "",
 
-                item["BIONLINE[Via Transporte]"],
+                        item["BIONLINE[Via Transporte]"],
 
-                item["BIONLINE[ETD]"],
+                        item["BIONLINE[ETD]"],
 
-                item["BIONLINE[ETA]"],
+                        item["BIONLINE[ETA]"],
 
-                item["BIONLINE[ETA VDB]"],
+                        item["BIONLINE[ETA VDB]"],
 
-                ""
+                        ""
 
-            );
+                    );
 
-        }
+                }
+
+            });
+
+
+        /* =================================================
+           EXECUTAR IMPORTAÇÃO
+        ================================================= */
+
+        inserir(json);
 
     });
 
-    inserir(json);
 
-    console.log(`${json.length} ordens importadas.`);
+    /* =====================================================
+       BANCO JÁ FOI FECHADO AQUI
+    ================================================= */
+
+    console.log(
+        `${json.length} ordens importadas.`
+    );
 
 }
+
 
 module.exports = importarOrdens;

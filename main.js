@@ -4,6 +4,7 @@ const {
     ipcMain,
     dialog
 } = require("electron");
+
 const fs = require("fs");
 const path = require("path");
 const cenario = require("./app/js/cenario");
@@ -28,11 +29,11 @@ const pastaDados = path.join(
 
 
 // Banco
-require("./database");
-require("./criarbanco");
+const { usarBanco } = require("./database");
 
-const db = require("./database");
+require("./criarbanco");
 const importarOrdens = require("./importarordens");
+
 
 /*==================================================
   BUSCAR TODAS AS ORDENS
@@ -40,20 +41,21 @@ const importarOrdens = require("./importarordens");
 
 ipcMain.handle("buscarOrdens", () => {
 
-    return db.prepare(`
+    return usarBanco(db => {
 
-        SELECT *
+        return db.prepare(`
 
-        FROM ordens_compra
+            SELECT *
 
-          WHERE etaVolk >= '2025-01-01'
+            FROM ordens_compra
 
-        ORDER BY etaVolk
+              WHERE etaVolk >= '2025-01-01'
 
-        
+            ORDER BY etaVolk
 
+        `).all();
 
-    `).all();
+    });
 
 });
 
@@ -63,7 +65,7 @@ ipcMain.handle(
     () => {
 
         const caminho = path.join(
-    pastaDados,
+            pastaDados,
             "_faturado.json"
         );
 
@@ -79,11 +81,6 @@ ipcMain.handle(
 
     }
 );
-
-
-/*==================================================
-  BUSCAR ORDENS DO PRODUTO
-==================================================*/
 
 
 /*==================================================
@@ -119,58 +116,69 @@ ipcMain.handle(
         const placeholders =
             codigos.map(() => "?").join(",");
 
-        /* =========================================
-           BUSCAR OCs
-        ========================================= */
 
-        const ordens =
-            db.prepare(`
-                SELECT DISTINCT
-                    numOcp
-                FROM ordens_compra
-                WHERE
-                    status <> 'FINALIZADO'
-                    AND codPro IN (${placeholders})
-                    AND substr(etaVolk,1,7) = ?
-                    AND etaVolk >= '2025-01-01'
-                ORDER BY
-                    etaVolk,
-                    numOcp
-            `).all(
-                ...codigos,
-                mes
-            );
+        return usarBanco(db => {
 
-        /* =========================================
-           BUSCAR ITENS DAS OCs
-        ========================================= */
+            /* =========================================
+               BUSCAR OCs
+            ========================================= */
 
-        const stmtItens =
-            db.prepare(`
-                SELECT *
-                FROM ordens_compra
-                WHERE
-                    numOcp = ?
-                    AND status <> 'FINALIZADO'
-                    AND etaVolk >= '2025-01-01'
-                ORDER BY
-                    codPro,
-                    codDer
-            `);
+            const ordens =
+                db.prepare(`
+                    SELECT DISTINCT
+                        numOcp
+                    FROM ordens_compra
+                    WHERE
+                        status <> 'FINALIZADO'
+                        AND codPro IN (${placeholders})
+                        AND substr(etaVolk,1,7) = ?
+                        AND etaVolk >= '2025-01-01'
+                    ORDER BY
+                        etaVolk,
+                        numOcp
+                `).all(
+                    ...codigos,
+                    mes
+                );
 
-        const retorno = [];
 
-        ordens.forEach(o => {
+            /* =========================================
+               BUSCAR ITENS DAS OCs
+            ========================================= */
 
-            retorno.push(
-                ...stmtItens.all(o.numOcp)
-            );
+            const stmtItens =
+                db.prepare(`
+                    SELECT *
+                    FROM ordens_compra
+                    WHERE
+                        numOcp = ?
+                        AND status <> 'FINALIZADO'
+                        AND etaVolk >= '2025-01-01'
+                    ORDER BY
+                        codPro,
+                        codDer
+                `);
+
+
+            const retorno = [];
+
+
+            ordens.forEach(o => {
+
+                retorno.push(
+                    ...stmtItens.all(o.numOcp)
+                );
+
+            });
+
+
+            return retorno;
 
         });
 
-        return retorno;
     }
 );
+
 
 /*==================================================
   BUSCAR ITENS DA ORDEM
@@ -178,26 +186,28 @@ ipcMain.handle(
 
 ipcMain.handle("buscarItensOC", (event, numOcp) => {
 
-    return db.prepare(`
+    return usarBanco(db => {
 
-        SELECT *
+        return db.prepare(`
 
-        FROM ordens_compra
+            SELECT *
 
-        WHERE
+            FROM ordens_compra
 
-            numOcp=?
+            WHERE
 
-            AND etaVolk >= '2025-01-01'
+                numOcp=?
 
-            
+                AND etaVolk >= '2025-01-01'
 
-        ORDER BY
+            ORDER BY
 
-            codPro,
-            codDer
+                codPro,
+                codDer
 
-    `).all(numOcp);
+        `).all(numOcp);
+
+    });
 
 });
 
@@ -211,29 +221,34 @@ ipcMain.handle("salvarOC", (event, dados) => {
     console.log("ENTROU NO IPC");
 
     console.time("UPDATE");
-    db.prepare(`
 
-        UPDATE ordens_compra
+    usarBanco(db => {
 
-        SET
+        db.prepare(`
 
-            etd=?,
-            eta=?,
-            etaVolk=?,
-            simulado=1
+            UPDATE ordens_compra
 
-        WHERE
+            SET
 
-            numOcp=?
+                etd=?,
+                eta=?,
+                etaVolk=?,
+                simulado=1
 
-    `).run(
+            WHERE
 
-        dados.etd,
-        dados.eta,
-        dados.etaVolk,
-        dados.numOcp
+                numOcp=?
 
-    );
+        `).run(
+
+            dados.etd,
+            dados.eta,
+            dados.etaVolk,
+            dados.numOcp
+
+        );
+
+    });
 
     console.timeEnd("UPDATE");
 
@@ -246,41 +261,43 @@ ipcMain.handle(
     "buscarOrdensCodigoDerivacao",
     (event, codigos, derivacao) => {
 
-       
-
-        const placeholders = codigos.map(()=>"?").join(",");
+        const placeholders =
+            codigos.map(() => "?").join(",");
 
 
         const derivacaoLimpa =
+            String(derivacao)
+                .trim()
+                .toUpperCase();
 
-        String(derivacao)
 
-        .trim()
+        const retorno = usarBanco(db => {
 
-        .toUpperCase();
+            return db.prepare(`
 
-       
+                SELECT *
 
-        const retorno = db.prepare(`
+                FROM ordens_compra
 
-            SELECT *
+                WHERE
 
-            FROM ordens_compra
+                codPro IN (${placeholders})
+                  AND codDer = ?
 
-            WHERE 
-            
-            
-            codPro IN (${placeholders})
-              AND codDer = ?
+                  AND etaVolk >= '2025-01-01'
 
-              AND etaVolk >= '2025-01-01'
+            `).all(
+                ...codigos,
+                derivacaoLimpa
+            );
 
-        `).all(
-            ...codigos,
-            derivacaoLimpa
+        });
+
+
+        console.log(
+            "RETORNO:",
+            retorno.length
         );
-
-        console.log("RETORNO:", retorno.length);
 
         console.log(retorno);
 
@@ -290,33 +307,15 @@ ipcMain.handle(
 );
 
 
+/*==================================================
+  BUSCAR ORDENS BI
+==================================================*/
+
 ipcMain.handle("buscarOrdensBI", async () => {
-
-    const fs = require("fs");
-    const path = require("path");
-
-   const arquivo = path.join(
-    pastaDados,
-    "ordensbionline.json"
-  );
-
-    return JSON.parse(
-        fs.readFileSync(
-            arquivo,
-            "utf8"
-        )
-    );
-
-});
-
-ipcMain.handle("buscarPedidosAbertos", async () => {
-
-    const fs = require("fs");
-    const path = require("path");
 
     const arquivo = path.join(
         pastaDados,
-        "pedidosabertos.json"
+        "ordensbionline.json"
     );
 
     return JSON.parse(
@@ -328,10 +327,33 @@ ipcMain.handle("buscarPedidosAbertos", async () => {
 
 });
 
+
 ipcMain.handle(
+    "buscarPedidosAbertos",
+    async () => {
 
+        const arquivo = path.join(
+            pastaDados,
+            "pedidosabertos.json"
+        );
+
+        return JSON.parse(
+            fs.readFileSync(
+                arquivo,
+                "utf8"
+            )
+        );
+
+    }
+);
+
+
+/*==================================================
+  CENÁRIOS
+==================================================*/
+
+ipcMain.handle(
     "inserirCenario",
-
     async (event, dados) => {
 
         try {
@@ -340,7 +362,10 @@ ipcMain.handle(
 
                 sucesso: true,
 
-                id: cenario.inserirCenario(dados)
+                id:
+                    cenario.inserirCenario(
+                        dados
+                    )
 
             };
 
@@ -360,7 +385,6 @@ ipcMain.handle(
         }
 
     }
-
 );
 
 
@@ -373,6 +397,7 @@ ipcMain.handle(
     }
 );
 
+
 ipcMain.handle(
     "buscarCenario",
     async (event, id) => {
@@ -381,43 +406,56 @@ ipcMain.handle(
 
     }
 );
+
+
 ipcMain.handle(
-
     "atualizarCenario",
-
     async (event, dados) => {
 
-        return cenario.atualizarCenario(dados);
+        return cenario.atualizarCenario(
+            dados
+        );
 
     }
-
 );
-
-ipcMain.handle("excluirCenario", async (event, id) => {
-
-    return cenario.excluirCenario(id);
-
-});
 
 
 ipcMain.handle(
+    "excluirCenario",
+    async (event, id) => {
 
-    "buscarDatasOC",
-
-    async (event, cenarioId) => {
-
-        return cenario.buscarDatasOC(cenarioId);
+        return cenario.excluirCenario(id);
 
     }
-
 );
+
+
+ipcMain.handle(
+    "buscarDatasOC",
+    async (event, cenarioId) => {
+
+        return cenario.buscarDatasOC(
+            cenarioId
+        );
+
+    }
+);
+
 
 ipcMain.handle(
     "salvarDatasOC",
-    async (event, cenarioId, dados) => {
+    async (
+        event,
+        cenarioId,
+        dados
+    ) => {
 
-        console.log("IPC salvarDatasOC");
+        console.log(
+            "IPC salvarDatasOC"
+        );
+
         console.log(cenarioId);
+
         console.log(dados);
 
         return cenario.salvarDatasOC(
@@ -429,45 +467,44 @@ ipcMain.handle(
 );
 
 
+/*==================================================
+  CACHE
+==================================================*/
+
 ipcMain.handle(
-
     "buscarCacheHoje",
-
     () => {
 
         return cache.buscarCacheHoje();
 
     }
-
 );
 
+
 ipcMain.handle(
-
     "salvarCacheHoje",
-
-    (event,rowData,ordens) => {
+    (event, rowData, ordens) => {
 
         cache.salvarCacheHoje(
-
             rowData,
-
             ordens
-
         );
 
         return true;
 
     }
-
 );
 
 
 ipcMain.handle(
     "excluirCacheHoje",
     () => {
+
         return cache.excluirCacheHoje();
+
     }
 );
+
 
 /*==================================================
   LER PRODUTOS DO EXCEL
@@ -475,12 +512,17 @@ ipcMain.handle(
 
 ipcMain.handle(
     "lerProdutosExcel",
-    async (event, caminhoArquivo) => {
+    async (
+        event,
+        caminhoArquivo
+    ) => {
 
         try {
 
             const workbook =
-                XLSX.readFile(caminhoArquivo);
+                XLSX.readFile(
+                    caminhoArquivo
+                );
 
             const nomeAba =
                 workbook.SheetNames[0];
@@ -506,8 +548,11 @@ ipcMain.handle(
             );
 
             return {
+
                 sucesso: true,
+
                 produtos: produtos
+
             };
 
         }
@@ -519,8 +564,11 @@ ipcMain.handle(
             );
 
             return {
+
                 sucesso: false,
+
                 erro: erro.message
+
             };
 
         }
@@ -528,93 +576,152 @@ ipcMain.handle(
     }
 );
 
+
 /*==================================================
   SALVAR PRODUTOS NO SQLITE
 ==================================================*/
 
 ipcMain.handle(
     "salvarProdutos",
-    async (event, produtos) => {
+    async (
+        event,
+        produtos
+    ) => {
 
         try {
 
-            const stmt = db.prepare(`
-                INSERT INTO produtos
-                (
-                    produto,
-                    descricao
-                )
-                VALUES
-                (
-                    @produto,
-                    @descricao
-                )
-                ON CONFLICT(produto)
-                DO UPDATE SET
-                    descricao = excluded.descricao,
-                    data_alteracao = CURRENT_TIMESTAMP
-            `);
+            return usarBanco(db => {
 
-            const inserir =
-                db.transaction((lista) => {
+                const stmt =
+                    db.prepare(`
 
-                    for(const item of lista){
+                        INSERT INTO produtos
+                        (
+                            produto,
+                            descricao
+                        )
 
-                        const encontrarColuna = (obj, nome) => {
+                        VALUES
+                        (
+                            @produto,
+                            @descricao
+                        )
 
-    return Object.keys(obj).find(chave =>
+                        ON CONFLICT(produto)
+                        DO UPDATE SET
 
-        chave
-            .trim()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase()
-        === nome.toLowerCase()
+                            descricao =
+                                excluded.descricao,
 
-    );
+                            data_alteracao =
+                                CURRENT_TIMESTAMP
+
+                    `);
+
+
+                const inserirProduto =
+                    stmt;
+
+
+                const inserir =
+                    db.transaction(
+                        (lista) => {
+
+                            for(
+                                const item
+                                of lista
+                            ){
+
+                                const encontrarColuna =
+                                    (obj, nome) => {
+
+                                        return Object.keys(
+                                            obj
+                                        ).find(
+                                            chave =>
+
+                                                chave
+                                                    .trim()
+                                                    .normalize("NFD")
+                                                    .replace(
+                                                        /[\u0300-\u036f]/g,
+                                                        ""
+                                                    )
+                                                    .toLowerCase()
+
+                                                ===
+
+                                                nome.toLowerCase()
+
+                                        );
+
+                                    };
+
+
+                                const colunaProduto =
+                                    encontrarColuna(
+                                        item,
+                                        "produto"
+                                    );
+
+
+                                const colunaDescricao =
+                                    encontrarColuna(
+                                        item,
+                                        "descricao"
+                                    );
+
+
+                                const produto =
+                                    String(
+                                        item[
+                                            colunaProduto
+                                        ] ?? ""
+                                    ).trim();
+
+
+                                const descricao =
+                                    String(
+                                        item[
+                                            colunaDescricao
+                                        ] ?? ""
+                                    ).trim();
+
+
+                                if(!produto){
+                                    continue;
+                                }
+
+
+                                inserirProduto.run({
+
+                                    produto:
+                                        produto,
+
+                                    descricao:
+                                        descricao
+
+                                });
+
+                            }
+
+                        }
+                    );
+
+
+                inserir(produtos);
+
+
+                return {
+
+                    sucesso: true,
+
+                    quantidade:
+                        produtos.length
 
                 };
 
-
-                const colunaProduto =
-                    encontrarColuna(item, "produto");
-
-                const colunaDescricao =
-                    encontrarColuna(item, "descricao");
-
-
-                const produto =
-                    String(
-                        item[colunaProduto] ?? ""
-                    ).trim();
-
-                const descricao =
-                    String(
-                        item[colunaDescricao] ?? ""
-                    ).trim();
-
-
-                if(!produto){
-                    continue;
-                }
-
-                        inserirProduto.run({
-                            produto: produto,
-                            descricao: descricao
-                        });
-
-                    }
-
-                });
-
-            const inserirProduto = stmt;
-
-            inserir(produtos);
-
-            return {
-                sucesso: true,
-                quantidade: produtos.length
-            };
+            });
 
         }
         catch(erro){
@@ -625,16 +732,17 @@ ipcMain.handle(
             );
 
             return {
+
                 sucesso: false,
+
                 erro: erro.message
+
             };
 
         }
 
     }
 );
-
-
 /*==================================================
   BUSCAR DESCRIÇÕES DOS PRODUTOS
 ==================================================*/
@@ -646,17 +754,26 @@ ipcMain.handle(
         try {
 
             const produtos =
-                db.prepare(`
-                    SELECT
-                        produto,
-                        descricao
-                    FROM produtos
-                `).all();
+                usarBanco(db => {
+
+                    return db.prepare(`
+
+                        SELECT
+                            produto,
+                            descricao
+
+                        FROM produtos
+
+                    `).all();
+
+                });
+
 
             console.log(
                 "Descrições carregadas do SQLite:",
                 produtos.length
             );
+
 
             return produtos;
 
@@ -676,14 +793,22 @@ ipcMain.handle(
 );
 
 
+/*==================================================
+  EXPORTAR XLSX
+==================================================*/
+
 ipcMain.handle(
     "exportarXlsx",
-    async (event, dados) => {
+    async (
+        event,
+        dados
+    ) => {
 
         try{
 
             const resultado =
                 await dialog.showSaveDialog({
+
                     title:
                         "Salvar arquivo Excel",
 
@@ -694,11 +819,13 @@ ipcMain.handle(
                         {
                             name:
                                 "Excel",
+
                             extensions:[
                                 "xlsx"
                             ]
                         }
                     ]
+
                 });
 
 
@@ -708,8 +835,11 @@ ipcMain.handle(
             ){
 
                 return {
+
                     sucesso:false,
+
                     cancelado:true
+
                 };
 
             }
@@ -727,21 +857,29 @@ ipcMain.handle(
 
             XLSX.utils.book_append_sheet(
                 workbook,
+
                 worksheet,
+
                 "Dados"
+
             );
 
 
             XLSX.writeFile(
                 workbook,
+
                 resultado.filePath
+
             );
 
 
             return {
+
                 sucesso:true,
+
                 caminho:
                     resultado.filePath
+
             };
 
         }
@@ -752,10 +890,14 @@ ipcMain.handle(
                 erro
             );
 
+
             return {
+
                 sucesso:false,
+
                 erro:
                     erro.message
+
             };
 
         }
@@ -763,45 +905,68 @@ ipcMain.handle(
     }
 );
 
+
 /*==================================================
   CRIAR JANELA
 ==================================================*/
 
 
-
 function criarJanela() {
 
-    const janela = new BrowserWindow({
+    const janela =
+        new BrowserWindow({
 
-        width: 1900,
-        height: 1000,
-        autoHideMenuBar: true,
+            width: 1900,
 
-        webPreferences: {
+            height: 1000,
 
-            preload: path.join(__dirname, "preload.js"),
-            contextIsolation: true,
-            nodeIntegration: false
+            autoHideMenuBar: true,
 
-        }
 
-    });
+            webPreferences: {
+
+                preload:
+                    path.join(
+                        __dirname,
+                        "preload.js"
+                    ),
+
+                contextIsolation: true,
+
+                nodeIntegration: false
+
+            }
+
+        });
+
 
     janela.loadFile(
 
-        path.join(__dirname, "app", "SOP.html")
+        path.join(
+            __dirname,
+            "app",
+            "SOP.html"
+        )
 
     );
 
-   
 
-    janela.webContents.on("did-finish-load", () => {
+    janela.webContents.on(
+        "did-finish-load",
+        () => {
 
-    janela.webContents.setZoomFactor(1.5);
+            janela.webContents.setZoomFactor(
+                1.5
+            );
 
-   /*  janela.webContents.openDevTools(); */
+            
 
-    });
+          /*  janela.webContents.openDevTools();*/
+
+        
+
+        }
+    );
 
 }
 
@@ -819,12 +984,22 @@ app.whenReady().then(() => {
 });
 
 
-app.on("window-all-closed", () => {
+/*==================================================
+  FECHAR APP
+==================================================*/
 
-    if (process.platform !== "darwin") {
+app.on(
+    "window-all-closed",
+    () => {
 
-        app.quit();
+        if(
+            process.platform !==
+            "darwin"
+        ){
+
+            app.quit();
+
+        }
 
     }
-
-});
+);
